@@ -6,12 +6,17 @@ from classes_definintion import platooning_problem_parameters,Vehicle_model, pro
 from tqdm import tqdm
 import tkinter as tk
 from tkinter import messagebox
+
+linewidth = 1
+
 # to increase font size for paper figures
-# font = {'size'   : 32}
-# matplotlib.rc('font', **font)
-# params = {'xtick.labelsize':'x-large',
-#          'ytick.labelsize':'x-large'}
-# matplotlib.rcParams.update(params)
+font = {'size'   : 32}
+matplotlib.rc('font', **font)
+params = {'xtick.labelsize':'x-large',
+         'ytick.labelsize':'x-large'}
+matplotlib.rcParams.update(params)
+linewidth = 10
+
 
 
 dart_parameters = False # True if gain tuning for real robot
@@ -94,19 +99,28 @@ for kk in range(steps):
 
 
 fig = plt.figure()
+fig.subplots_adjust(
+top=0.995,
+bottom=0.12,
+left=0.075,
+right=0.995,
+hspace=0.2,
+wspace=0.2
+    )
+
 if select_new_d_h_from_graph:
     plt.title('gain selection figure(click with mouse and close figure)')
 else:
     #plt.title('Gain selection figure')
     pass
 
-plt.xlabel('h') # ,fontsize=50
-plt.ylabel('d [m]') # ,fontsize=50
-plt.plot(h_vec,h_vec*v_d,color='slategray',label='d > positive gains constraint') # ,linewidth=10
-plt.plot(h_vec,d_stringstab,color='navy',label='d < string stabilty constraint') # ,linewidth=10
-plt.plot(h_vec,d_crit_damp,color='cornflowerblue',label='d < critically damped constraint') # ,linewidth=10
+plt.xlabel('$h$') # ,fontsize=50
+plt.ylabel('$d$ [m]') # ,fontsize=50
+plt.plot(h_vec,h_vec*v_d,color='slategray',label='$d$ > positive gains constraint',linewidth=linewidth) # ,linewidth=10
+plt.plot(h_vec,d_stringstab,color='navy',label='$d$ < string stabilty constraint',linewidth=linewidth) # ,linewidth=10
+plt.plot(h_vec,d_crit_damp,color='cornflowerblue',label='$d$ < critically damped constraint',linewidth=linewidth) # ,linewidth=10
 plt.fill_between(h_vec, h_vec*v_d, d_stringstab, color='skyblue',
-                 alpha=0.25,label='admissible h-d region')
+                 alpha=0.25,label='admissible $h-d$ region')
 if dart_parameters:
     plt.ylim([0,4])
     plt.xlim([0,1.35])

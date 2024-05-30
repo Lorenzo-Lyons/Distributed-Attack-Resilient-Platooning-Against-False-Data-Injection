@@ -63,14 +63,15 @@ colors = ["71b6cb","00a6d6","5a7b86","000000"] # colors of lines to plot
 # chose scenario to simulate
 # 1 = strady state behaviour linear only (staring from far away in the p_rel-v_rel plane)
 # 2 = linear controller only, leader oscillates around equilibrium point
-# 3 = linear + u_ff, leader oscillates around equilibrium point
-# 4 = linear + u_ff, fake data injection attack sinusoidal wave leader-vehicle1
-# 5 = linear + u_ff, fake data injection attack extremely high acceleration
-# 6 = linear + u_ff, fake data injection attack extremely high acceleration and leader performs emergency brake
+# 3 = linear + u_ff, leader oscillates around equilibrium point  u_ff = u_i
+# 4 = linear + u_ff, leader oscillates around equilibrium point  u_ff = u_i +kh(v_(i+1)-vD)
+# 5 = linear + u_ff, fake data injection attack sinusoidal wave leader-vehicle1
+# 6 = linear + u_ff, fake data injection attack extremely high acceleration
+# 7 = linear + u_ff, fake data injection attack extremely high acceleration and leader performs emergency brake
 
 
 
-scenario = 6
+scenario = 7
 
 
 # select scenario- i.e. leader behavior, using mpc, sliding mode, ecc
@@ -172,7 +173,9 @@ for t in tqdm(range(sim_steps), desc ="Simulation progress"):
 
             if attack_function == []:
                 # copy accelration from previous vehicle
-                u_ff = vehicle_vec[kk-1].u 
+                u_ff = vehicle_vec[kk-1].u
+                if scenario == 4: # add external damping term compensation
+                    u_ff = u_ff + k*h*(vehicle_vec[kk].v-v_d)
             else:
                 if kk ==1: #simulate an attack between leader and vehicle 1
                     u_ff = attack_function(t*dt_int,vehicle_vec[kk-1].u)
@@ -193,13 +196,6 @@ for t in tqdm(range(sim_steps), desc ="Simulation progress"):
         else:
             u_ff = 0
 
-        #     #scripted accelereation
-        #     if scenario == 1 or scenario==2 or scenario==3 or scenario==4:
-        #         u_mpc = 0
-        #         vehicle_vec[kk].u_mpc = 0
-        #     elif scenario==5:
-        #         u_mpc = u_max_mpc
-        #         vehicle_vec[kk].u_mpc = u_mpc
 
         #compute linear controller action
         u_lin = -k*(vehicle_states[kk][t,1]) - c*(vehicle_states[kk][t,0]) - k*h*(vehicle_vec[kk].v-v_d)

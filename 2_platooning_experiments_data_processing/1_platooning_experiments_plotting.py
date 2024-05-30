@@ -52,7 +52,7 @@ def add_masks_and_legend(ax,mask_ff_action,mask_attack,mask_attack_detected,exp1
 
     if exp1:
         # uff active
-        ax.fill_between(time_vec, top_lim +1, bot_lim -1, where=mask_ff_action, color='navy', alpha=0.1, label='u_ff active')
+        ax.fill_between(time_vec, top_lim +1, bot_lim -1, where=mask_ff_action, color='navy', alpha=0.1, label='$u^{{ff}}$ active')
     elif exp2:
         # attack active
         ax.fill_between(time_vec, top_lim +1, bot_lim-1, where=mask_attack, color='orangered', alpha=0.1, label='attack active')
@@ -106,16 +106,16 @@ d_safety = 0.5
 # file path  (uncomment both lines to select wich experiment to plot)
 
 #experiment 1
-exp1 = True
-file_path = 'experiment_data/data_experiment_1_2024-03-22-16-30-52.csv' 
+# exp1 = True
+# file_path = 'experiment_data/data_experiment_1_2024-03-22-16-30-52.csv' 
 
 #experiment 2
-#exp2 = True
-#file_path = 'experiment_data/data_experiment_2_03_22_2024_17_48_58.csv'
+# exp2 = True
+# file_path = 'experiment_data/data_experiment_2_03_22_2024_17_48_58.csv'
 
 #experiment 3
-# exp3 = True
-# file_path = 'experiment_data/data_experiment_3_2024-03-22-17-13-57.csv'
+exp3 = True
+file_path = 'experiment_data/data_experiment_3_2024-03-22-17-13-57.csv'
 
 #demo
 #file_path = 'platooning_ws/src/platooning_utilities/Data/platooning_full_demo/platooning_data_03_21_2024_16_23_22.csv'
@@ -209,7 +209,7 @@ elif exp3:
     fig.subplots_adjust(
     top=0.965,
     bottom=0.07,
-    left=0.070,
+    left=0.05,
     right=0.75,
     hspace=0.2,
     wspace=0.2
@@ -234,11 +234,13 @@ for i in range(i_init,car_num):
     # Filter distance signal for graphical purposes
     df[f'dist{i+1}_filtered'] = savgol_filter(df[f'dist{i+1}'].to_numpy(), window_length, polyorder)
     # Plot filtered data
-    ax.plot(time_vec, -df[f'dist{i+1}_filtered'].to_numpy(), label=fr'$\tilde{{p}}_{i+1}$',color='#'+colors[i], linewidth=3)
+    if exp3: # expe 3 needs different labels
+        ax.plot(time_vec, -df[f'dist{i+1}_filtered'].to_numpy(), label=fr'$p_{i+1}^*$',color='#'+colors[i], linewidth=3)
+    else:
+        ax.plot(time_vec, -df[f'dist{i+1}_filtered'].to_numpy(), label=fr'$p_{i}-p_{i+1}$',color='#'+colors[i], linewidth=3)
 
 add_masks_and_legend(ax,mask_ff_action,mask_attack,mask_attack_detected,exp1,exp2,exp3,True)
 ax.set_ylabel('[m]')
-
 
 
 
@@ -256,22 +258,6 @@ for i in range(car_num):
 ax.set_ylabel('[m\s]')
 add_masks_and_legend(ax,mask_ff_action,mask_attack,mask_attack_detected,exp1,exp2,exp3,False)
 
-# # Fill between
-# top_lim = ax.get_ylim()[1]  
-# bot_lim = ax.get_ylim()[0] 
-# ax.set_ylim(bottom=bot_lim,top = top_lim)
-# #ax.fill_between(time_vec, top_lim, bot_lim, where=mask, color='gray', alpha=0.1, label='safety value disengaged')
-
-# #ax.fill_between(time_vec, top_lim +1, bot_lim -1, where=mask_ff_action, color='darkgreen', alpha=0.1, label='u_ff active')
-# if exp2 or exp3:
-#     ax.fill_between(time_vec, top_lim +1, bot_lim -1, where=mask_attack, color='orangered', alpha=0.1, label='attack active')
-#     ax.fill_between(time_vec, top_lim +1, bot_lim -1, where=mask_attack_detected, color='navy', alpha=0.1, label='attack detected')
-#     ax.fill_between(time_vec, top_lim +1, bot_lim -1, where=mask_topology_change, color='purple', alpha=0.1, label='topology changed')
-
-# ax.legend(ncol =ncol, handlelength=1, loc=loc, bbox_to_anchor=anchor)
-
-
-
 
 
 
@@ -287,24 +273,7 @@ if exp1 or exp2:
     ax.set_ylabel('[m\s]')
     add_masks_and_legend(ax,mask_ff_action,mask_attack,mask_attack_detected,exp1,exp2,exp3,False)
 
-    # # Fill between
-    # top_lim = ax.get_ylim()[1]  
-    # bot_lim = ax.get_ylim()[0] 
 
-    # if exp2:
-    #     bot_lim = bot_lim - 0.2
-
-
-    # ax.set_ylim(bottom=bot_lim,top = top_lim)
-    # #ax.fill_between(time_vec, top_lim, bot_lim, where=mask, color='gray', alpha=0.1, label='safety value disengaged')
-    # #ax.fill_between(time_vec, top_lim +1, bot_lim -1, where=mask_ff_action, color='darkgreen', alpha=0.1, label='u_ff active')
-    # if exp2 or exp3:
-    #     ax.fill_between(time_vec, top_lim +1, bot_lim -1, where=mask_attack, color='orangered', alpha=0.1, label='attack active')
-    #     ax.fill_between(time_vec, top_lim +1, bot_lim -1, where=mask_attack_detected, color='navy', alpha=0.1, label='attack detected')
-    #     ax.fill_between(time_vec, top_lim +1, bot_lim -1, where=mask_topology_change, color='purple', alpha=0.1, label='topology changed')
-
-    # ax.set_ylabel('[m\s]')
-    # ax.legend(ncol =ncol, handlelength=1, loc=loc, bbox_to_anchor=anchor)
 
 
 # --- residual signal ---
@@ -312,36 +281,12 @@ if exp3:
     ax = axs[1]
     ax.set_title('Residual')
 
-    # Filter alarm signal
-    #df['alarm2_filtered'] = savgol_filter(df['alarm2'].to_numpy(), window_length, polyorder)
-    # Plot filtered data
-    #ax.plot(time_vec, df['alarm2_filtered'].to_numpy(), label=f'alarm 2', color='#'+colors[1], linewidth=3)
     ax.plot(time_vec, 0.5 * np.ones(len(time_vec)), color="gray", linestyle='--', label=r'$\bar{{r}}$', linewidth=3)
     for i in range(4):
         ax.plot(time_vec, df['alarm'+str(i+1)].to_numpy(), label=fr'${{r}}_{1+i}$', color='#'+colors[i], linewidth=3)
 
     add_masks_and_legend(ax,mask_ff_action,mask_attack,mask_attack_detected,exp1,exp2,exp3,True)
-
-    # ax.plot(time_vec, df['alarm1'].to_numpy(), label=r'$r_1$', color='#'+colors[0], linewidth=3)
-    # ax.plot(time_vec, df['alarm2'].to_numpy(), label=r'$r_2$', color='#'+colors[1], linewidth=3)
-    # ax.plot(time_vec, df['alarm3'].to_numpy(), label=r'$r_3$', color='#'+colors[2], linewidth=3)
-    # ax.plot(time_vec, df['alarm4'].to_numpy(), label=r'$r_4$', color='#'+colors[3], linewidth=3)
-
-    # top_lim = ax.get_ylim()[1]  
-    # bot_lim = ax.get_ylim()[0]
-    # ax.set_ylim(bottom=bot_lim,top = top_lim)
-
-
-    # #ax.fill_between(time_vec, top_lim +1, bot_lim -1, where=mask_ff_action, color='darkgreen', alpha=0.1, label='u_ff active')
-    # ax.fill_between(time_vec, top_lim +1, bot_lim -1, where=mask_attack, color='orangered', alpha=0.1, label='attack active')
-    # ax.fill_between(time_vec, top_lim +1, bot_lim -1, where=mask_attack_detected, color='navy', alpha=0.1, label='attack detected')
-    # ax.fill_between(time_vec, top_lim +1, bot_lim -1, where=mask_topology_change, color='purple', alpha=0.1, label='topology changed')
-    
-
-    # ax.legend(ncol =ncol, handlelength=1, loc=loc, bbox_to_anchor=anchor)
-
-
-
+    ax.set_ylabel('[m\s]')
 
 
 # set time axis only on last plot

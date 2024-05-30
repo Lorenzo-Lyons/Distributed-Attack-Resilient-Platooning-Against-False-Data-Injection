@@ -156,6 +156,28 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         leader_acc_fun = lambda t: np.sin(t/period*2*np.pi) * amplitude
 
     elif scenario==4:
+            #follower initial position (v=v_max)
+        v_rel_follower_1 = 0
+        p_rel_1 = 0
+
+        #because otherwise all followers will have smaller velocity with respect to the leader
+        v_rel_follower_others = 0
+        p_rel_others = 0
+
+        # Leader
+        x0_leader = 0
+        v0_leader = v_d
+
+        #use u_ff?    
+        use_ff = True
+
+        # leader acceleration function
+        period = 10 # [s]
+        amplitude = 4 #[m/s^2]
+        leader_acc_fun = lambda t: np.sin(t/period*2*np.pi) * amplitude
+
+
+    elif scenario==5:
 
         #follower initial position (v=v_max)
         v_rel_follower_1 = 0
@@ -181,7 +203,7 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         attack_function = lambda t,u_i: np.sin(t/period*2*np.pi) * amplitude
 
 
-    elif scenario==5:
+    elif scenario==6:
 
         #follower initial position (v=v_max)
         v_rel_follower_1 = 0
@@ -204,7 +226,7 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         # attack function
         attack_function = lambda t,u_i: u_max * 1000 # extremely high value
 
-    elif scenario==6:
+    elif scenario==7:
 
         #follower initial position (v=v_max)
         v_rel_follower_1 = 0

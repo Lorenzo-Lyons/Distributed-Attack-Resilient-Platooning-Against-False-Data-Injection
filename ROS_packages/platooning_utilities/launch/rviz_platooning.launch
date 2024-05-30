@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<launch>
+   <node pkg="rviz" type="rviz" name="rviz_node" args="-d $(find platooning_utilities)/configs/jetracer_slam_visualization.rviz" />
+
+</launch>
