@@ -287,7 +287,7 @@ print('---------------------')
 
 
 # save gains
-#np.save('saved_linear_controller_gains', np.array([k,c,h,d]))
+np.save('saved_linear_controller_gains', np.array([k,c,h,d]))
 
 # show plots
 plt.show()
