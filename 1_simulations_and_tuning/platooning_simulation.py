@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from classes_definintion import platooning_problem_parameters,Vehicle_model,set_scenario_parameters
 from tqdm import tqdm
-import forcespro
 
 
 # this figure shows the v_relative - p_relative v_absolute reachable set 
