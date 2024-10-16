@@ -292,6 +292,33 @@ def produce_leader_open_loop(leader_model,u_leader_vec,dt):
     #u = u_mpc_leader # set overall u
     return leader_model
 
+# support function to generate color gradients for plots
+import matplotlib.colors as mcolors
+import numpy as np
+
+def hex_to_rgb(hex_color):
+    # Convert a hex color to an RGB tuple
+    return mcolors.hex2color(hex_color)
+
+def rgb_to_hex(rgb_color):
+    # Convert an RGB tuple to a hex color
+    return mcolors.to_hex(rgb_color)
+
+def generate_color_gradient(n, start_color, end_color):
+    # Convert the start and end hex colors to RGB tuples
+    start_rgb = np.array(hex_to_rgb(start_color))
+    end_rgb = np.array(hex_to_rgb(end_color))
+    
+    # Prepare an empty list to store the gradient colors
+    gradient = []
+    
+    # Generate 'n' colors by linear interpolation between start and end colors
+    for t in np.linspace(0, 1, n):
+        interpolated_color = (1 - t) * start_rgb + t * end_rgb
+        gradient.append(rgb_to_hex(interpolated_color))
+    
+    return gradient
+
 
 
 

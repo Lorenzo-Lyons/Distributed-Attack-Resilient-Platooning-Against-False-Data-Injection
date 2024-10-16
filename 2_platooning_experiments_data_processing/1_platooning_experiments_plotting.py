@@ -4,7 +4,14 @@ import pandas as pd
 from scipy.signal import savgol_filter
 
 
-# NOTE: set current working directory as "platooning_experiments_data_processing" before running this file
+# NOTE: set current working directory as "Distributed-Attack-Resilient-Platooning-Against-False-Data-Injection" before running this file
+
+
+# select experiment to plot [1,2,3]
+experiment = 3
+
+
+
 
 
 
@@ -105,20 +112,18 @@ d_safety = 0.5
 
 # file path  (uncomment both lines to select wich experiment to plot)
 
-#experiment 1
-# exp1 = True
-# file_path = 'experiment_data/data_experiment_1_2024-03-22-16-30-52.csv' 
+if experiment==1:
+    exp1 = True
+    file_path = '2_platooning_experiments_data_processing/experiment_data/data_experiment_1_2024-03-22-16-30-52.csv' 
 
-#experiment 2
-# exp2 = True
-# file_path = 'experiment_data/data_experiment_2_03_22_2024_17_48_58.csv'
+elif experiment==2:
+    exp2 = True
+    file_path = '2_platooning_experiments_data_processing/experiment_data/data_experiment_2_03_22_2024_17_48_58.csv'
 
-#experiment 3
-exp3 = True
-file_path = 'experiment_data/data_experiment_3_2024-03-22-17-13-57.csv'
+elif experiment==3:
+    exp3 = True
+    file_path = '2_platooning_experiments_data_processing/experiment_data/data_experiment_3_2024-03-22-17-13-57.csv'
 
-#demo
-#file_path = 'platooning_ws/src/platooning_utilities/Data/platooning_full_demo/platooning_data_03_21_2024_16_23_22.csv'
 
 
 
@@ -255,7 +260,7 @@ for i in range(car_num):
     # Plot filtered data
     ax.plot(time_vec, df[f'v{i+1}_filtered'].to_numpy(), label=fr'$v_{i+1}$', color='#'+colors[i], linewidth=3)
     
-ax.set_ylabel('[m\s]')
+ax.set_ylabel('[m/s]')
 add_masks_and_legend(ax,mask_ff_action,mask_attack,mask_attack_detected,exp1,exp2,exp3,False)
 
 
@@ -270,7 +275,7 @@ if exp1 or exp2:
         df[f'vrel{i+1}_filtered'] = savgol_filter(df[f'vrel{i+1}'].to_numpy(), window_length, polyorder)
         # Plot filtered data
         ax.plot(time_vec, df[f'vrel{i+1}_filtered'].to_numpy(), label=fr'$\tilde{{v}}_{i+1}$', color='#'+colors[i], linewidth=3)
-    ax.set_ylabel('[m\s]')
+    ax.set_ylabel('[m/s]')
     add_masks_and_legend(ax,mask_ff_action,mask_attack,mask_attack_detected,exp1,exp2,exp3,False)
 
 
@@ -286,7 +291,7 @@ if exp3:
         ax.plot(time_vec, df['alarm'+str(i+1)].to_numpy(), label=fr'${{r}}_{1+i}$', color='#'+colors[i], linewidth=3)
 
     add_masks_and_legend(ax,mask_ff_action,mask_attack,mask_attack_detected,exp1,exp2,exp3,True)
-    ax.set_ylabel('[m\s]')
+    ax.set_ylabel('[m/s]')
 
 
 # set time axis only on last plot

@@ -17,7 +17,7 @@ rc('font', **font)
 
 
 #experiment 2
-file_path = 'experiment_data/data_experiment_2_03_22_2024_17_48_58.csv'
+file_path = '2_platooning_experiments_data_processing/experiment_data/data_experiment_2_03_22_2024_17_48_58.csv'
 
 
 
@@ -76,12 +76,14 @@ mask_attack = np.array(df['attack']) == True
 
 fig, ax = plt.subplots(2, 1, figsize=(16, 8), sharex=True)
 fig.canvas.set_window_title('Data Plots')
-fig.subplots_adjust(top=0.951,
+fig.subplots_adjust(
+top=0.951,
 bottom=0.089,
-left=0.072,
+left=0.077,
 right=0.806,
 hspace=0.185,
-wspace=0.2)
+wspace=0.2
+)
 
 
 
@@ -106,7 +108,7 @@ anchor = (1,1.05)
 ncol = 1
 right = 0.995
 ax[0].legend(ncol =ncol, handlelength=1, loc=loc, bbox_to_anchor=anchor)
-ax[0].set_ylabel('Acceleration 1 [m/s^2]')
+ax[0].set_ylabel('[m/s$^2$]')
 
 
 
@@ -121,7 +123,7 @@ top_lim = top_lim + 0.1
 ax[1].plot(time_vec, 0.5 * np.ones(len(time_vec)), color="gray", linestyle='--', label=r'$\bar{{r}}$', linewidth=3)
 ax[1].set_ylim(bottom=bot_lim, top = top_lim)
 ax[1].set_xlim(left=0.0, right = time_vec[-1])
-ax[1].set_ylabel('Residual 2 [m/s]')
+ax[1].set_ylabel('[m/s]')
 
 ax[1].fill_between(time_vec,  bot_lim, top_lim, where=mask_attack[1:], color='orangered', alpha=0.1, label='attack active', linewidth=3)
 ax[1].legend(ncol =ncol, handlelength=1, loc=loc, bbox_to_anchor=anchor)

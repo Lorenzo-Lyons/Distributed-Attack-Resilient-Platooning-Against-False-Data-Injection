@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-from classes_definintion import platooning_problem_parameters,Vehicle_model,set_scenario_parameters
+from classes_definintion import platooning_problem_parameters,Vehicle_model,set_scenario_parameters,generate_color_gradient
 from tqdm import tqdm
 
 
@@ -55,8 +55,26 @@ print('---------------------')
 simulation_time = 200  #[s]
 #attack_strat_time = 50 #[s] if the scenario includes an attack set initial attack time
 dt_int = 0.01 #[s]
-n_follower_vehicles = 3 # number of follower vehicles (so the leader is vehicle 0)
-colors = ["71b6cb","00a6d6","5a7b86","000000"] # colors of lines to plot
+n_follower_vehicles = 9 # number of follower vehicles (so the leader is vehicle 0)
+
+
+# Example usage
+start_color = "#000000"
+end_color = "#71b6cb" 
+
+colors = generate_color_gradient(n_follower_vehicles + 1, start_color, end_color)
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # chose scenario to simulate
@@ -70,7 +88,7 @@ colors = ["71b6cb","00a6d6","5a7b86","000000"] # colors of lines to plot
 
 
 
-scenario = 7
+scenario = 3
 
 
 # select scenario- i.e. leader behavior, using mpc, sliding mode, ecc
@@ -299,8 +317,8 @@ for kk in range(1,n_follower_vehicles+1):
         subsampled_data = vehicle_states[kk]
 
     # Line plot
-    ax.plot(subsampled_data[:, 0], subsampled_data[:, 1], subsampled_data[:, 2], alpha=0.7, color='#'+colors[kk-1])
-    ax.scatter3D(subsampled_data[:, 0], subsampled_data[:, 1], subsampled_data[:, 2],label='vehicle '+str(int(kk+1)), color='#'+colors[kk-1])
+    ax.plot(subsampled_data[:, 0], subsampled_data[:, 1], subsampled_data[:, 2], alpha=0.7, color=colors[kk])
+    ax.scatter3D(subsampled_data[:, 0], subsampled_data[:, 1], subsampled_data[:, 2],label='vehicle '+str(int(kk+1)), color=colors[kk-1])
 
 
 
@@ -311,7 +329,7 @@ for kk in range(1,n_follower_vehicles+1):
 t_vec = np.array(range(sim_steps)) * dt_int
 plt.figure()
 for kk in range(n_follower_vehicles+1):
-    plt.plot(t_vec,vehicle_states[kk][:,3],label='vehicle ' + str(int(kk)), color='#'+colors[kk-1]) #,color=line_color,alpha=transparency
+    plt.plot(t_vec,vehicle_states[kk][:,3],label='vehicle ' + str(int(kk)), color=colors[kk]) 
 
 plt.legend()
 plt.xlabel('time [s]')
@@ -323,7 +341,7 @@ plt.title('Absolute Velocity')
 t_vec = np.array(range(sim_steps)) * dt_int
 plt.figure()
 for kk in range(1,n_follower_vehicles+1):
-    plt.plot(t_vec,vehicle_states[kk][:,0],label='vehicle ' + str(int(kk+1)), color='#'+colors[kk])
+    plt.plot(t_vec,vehicle_states[kk][:,0],label='vehicle ' + str(int(kk+1)), color=colors[kk])
 
 plt.legend()
 plt.xlabel('time [s]')
@@ -335,8 +353,9 @@ plt.title('Relative Velocity')
 # plot relative position leader vs follower 
 t_vec = np.array(range(sim_steps)) * dt_int
 plt.figure()
+plt.plot(t_vec,np.ones(len(t_vec))*-d,linestyle='--',color='gray',label='d')
 for kk in range(1,n_follower_vehicles+1):
-    plt.plot( t_vec,-(vehicle_states[kk-1][:,4] - vehicle_states[kk][:,4]),label='x_rel ' + str(int(kk+1)), color='#'+colors[kk])
+    plt.plot( t_vec,-(vehicle_states[kk-1][:,4] - vehicle_states[kk][:,4]),label='x_rel ' + str(int(kk+1)), color=colors[kk])
 
 plt.legend()
 plt.xlabel('time [s]')
@@ -348,9 +367,9 @@ plt.title('Relative position')
 plt.figure()
 plt.plot(t_vec,u_min*np.ones(len(u_vector_leader)),linestyle='--',color='gray',label='u_min')
 plt.plot(t_vec,u_max*np.ones(len(u_vector_leader)),linestyle='--',color='gray',label='u_max')
-plt.plot(t_vec,u_vector_leader,label='u leader', color='#'+colors[0])
+plt.plot(t_vec,u_vector_leader,label='u leader', color=colors[0])
 for hh in range(n_follower_vehicles):
-    plt.plot(t_vec,u_total_followers[:,hh],label='vehicle'+str(hh+2), color='#'+colors[hh+1])
+    plt.plot(t_vec,u_total_followers[:,hh],label='vehicle'+str(hh+2), color=colors[hh+1])
 plt.ylabel('acceleration [m/s^2]')
 plt.xlabel('time [s]')
 plt.legend()
