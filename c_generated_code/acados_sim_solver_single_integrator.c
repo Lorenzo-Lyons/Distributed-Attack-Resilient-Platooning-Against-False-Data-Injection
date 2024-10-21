@@ -176,8 +176,8 @@ int single_integrator_acados_sim_create(single_integrator_sim_solver_capsule * c
 
     /* initialize input */
     // x
-    double x0[1];
-    for (int ii = 0; ii < 1; ii++)
+    double x0[2];
+    for (int ii = 0; ii < 2; ii++)
         x0[ii] = 0.0;
 
     sim_in_set(single_integrator_sim_config, single_integrator_sim_dims,
@@ -193,11 +193,11 @@ int single_integrator_acados_sim_create(single_integrator_sim_solver_capsule * c
                single_integrator_sim_in, "u", u0);
 
     // S_forw
-    double S_forw[2];
-    for (int ii = 0; ii < 2; ii++)
+    double S_forw[6];
+    for (int ii = 0; ii < 6; ii++)
         S_forw[ii] = 0.0;
-    for (int ii = 0; ii < 1; ii++)
-        S_forw[ii + ii * 1 ] = 1.0;
+    for (int ii = 0; ii < 2; ii++)
+        S_forw[ii + ii * 2 ] = 1.0;
 
 
     sim_in_set(single_integrator_sim_config, single_integrator_sim_dims,

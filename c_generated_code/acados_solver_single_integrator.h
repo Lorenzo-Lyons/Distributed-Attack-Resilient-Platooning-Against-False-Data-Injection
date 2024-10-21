@@ -36,12 +36,12 @@
 #include "acados_c/ocp_nlp_interface.h"
 #include "acados_c/external_function_interface.h"
 
-#define SINGLE_INTEGRATOR_NX     1
+#define SINGLE_INTEGRATOR_NX     2
 #define SINGLE_INTEGRATOR_NZ     0
 #define SINGLE_INTEGRATOR_NU     1
 #define SINGLE_INTEGRATOR_NP     1
 #define SINGLE_INTEGRATOR_NBX    0
-#define SINGLE_INTEGRATOR_NBX0   1
+#define SINGLE_INTEGRATOR_NBX0   2
 #define SINGLE_INTEGRATOR_NBU    1
 #define SINGLE_INTEGRATOR_NSBX   0
 #define SINGLE_INTEGRATOR_NSBU   0

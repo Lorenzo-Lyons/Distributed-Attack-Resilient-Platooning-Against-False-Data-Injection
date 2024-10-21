@@ -5,21 +5,24 @@ from casadi import SX, vertcat
 from matplotlib import pyplot as plt
 
 # 1. Define the system model
-def export_single_integrator_model():
-    model_name = "single_integrator"
+def export_double_integrator_model():
+    model_name = "double_integrator"
 
     # States & controls
-    x = SX.sym('x')  # state (position)
+    vel = SX.sym('v')  # velocity
+    pos = SX.sym('x')  # position
+
+    #x = vertcat(vel,pos)  # state (position)
     u = SX.sym('u')  # control input (velocity)
 
-    p = SX.sym('x_ref')  # reference for the state
+    p = vertcat(SX.sym('x_ref'),SX.sym('x_assumed_self'))  # reference for the state
 
-    # Dynamics (discrete-time)
-    f_expl = vertcat(u)  # continuous-time dynamics
+    # Dynamics (continuous-time)
+    f_expl = vertcat(u, vel)
 
     model = AcadosModel()
     model.f_expl_expr = f_expl
-    model.x = x
+    model.x = vertcat(vel,pos)
     model.u = u
     model.name = model_name
 
@@ -29,28 +32,32 @@ def export_single_integrator_model():
     return model
 
 # 2. Define the MPC solver
-def setup_mpc_solver(Tf, N):
+def setup_mpc_solver(Tf, N, u_max,u_min,v_max,v_min):
     # Create ocp object
     ocp = AcadosOcp()
 
     # Export model
-    model = export_single_integrator_model()
+    model = export_double_integrator_model()
 
     # Set model
     ocp.model = model
 
     # Set dimensions
-    nx = 1  # state dimension
+    nx = 2  # state dimension
     nu = 1  # input dimension
-    npar = 1  # number of parameters
+    npar = 2  # number of parameters
     #ny = nx + nu  # number of outputs in cost function
 
     # Set prediction horizon
     ocp.dims.N = N
 
     # 1. Set cost function
-    Q_mat = 100 * np.eye(nx)  # State weight
-    R_mat = 1 * np.eye(nu)   # Control weight
+    qu = 0.01  # Control weight
+    qx = 1
+    qx_final = 10000
+
+    #Q_mat = np.array([[qv,0],[0,qx]]) # State weight
+    #R_mat = 1 * np.eye(nu)   # Control weight
 
     # The 'EXTERNAL' cost type can be used to define general cost terms
     # We'll modify the cost to account for stage-wise references
@@ -58,24 +65,33 @@ def setup_mpc_solver(Tf, N):
     ocp.cost.cost_type_e = 'EXTERNAL'
 
     # External cost expressions
-    x_ref = model.p[0]  # reference for the state
-    #u_ref = SX(0)  # Control reference is fixed at 0
+    x_ref = model.p[0]   # reference for the state (zero velocity)
+    x_assumed_self = model.p[1] # position comunicated to neighbours on the previous iteration
 
-    # Stage cost and terminal cost (adjust for stage-wise references)
-    ocp.model.cost_expr_ext_cost = (model.x - x_ref).T @ Q_mat @ (model.x - x_ref) + model.u.T @ R_mat @ model.u
-    ocp.model.cost_expr_ext_cost_e = (model.x - x_ref).T @ Q_mat @ (model.x - x_ref)
+    ocp.model.cost_expr_ext_cost =  qu * model.u**2 + qx * (model.x[1]-x_ref)**2 + qx * (model.x[1]-x_assumed_self)**2 # + qx * (model.x[1]-x_ref)**2 #
+    ocp.model.cost_expr_ext_cost_e =  qx_final * (model.x[1] - x_ref)**2 
+
 
     # 2. Set constraints
-    # Input limits
-    u_max = 1.0
-    u_min = -1.0
+    # Velocity constraints (apply only to velocity, index 0)
+
+    # Set the state constraints bounds
+    ocp.constraints.lbx = np.array([v_min])  # Lower bound on velocity
+    ocp.constraints.ubx = np.array([v_max])  # Upper bound on velocity
+    ocp.constraints.idxbx = np.array([0])    # Specify which state is constrained (0 for velocity)
+
+
     ocp.constraints.constr_type = 'BGH'
     ocp.constraints.lbu = np.array([u_min])
     ocp.constraints.ubu = np.array([u_max])
     ocp.constraints.idxbu = np.array([0])
 
+    # # Enforce terminal control action to be zero at the last stage
+    ocp.constraints.lbu_e = np.array([0.0])  # Lower bound on terminal input
+    ocp.constraints.ubu_e = np.array([0.0])  # Upper bound on terminal input
+
     # Initial state constraint
-    ocp.constraints.x0 = np.array([0.0])  # Starting from position 0
+    ocp.constraints.x0 = np.array([0.0, 0.0])  # Starting from position 0
 
     # 3. Set solver options
     ocp.solver_options.qp_solver = 'FULL_CONDENSING_QPOASES'
@@ -93,26 +109,65 @@ def setup_mpc_solver(Tf, N):
     return acados_ocp_solver
 
 # 6. Main MPC loop
-def run_mpc(Tf,N,Nsim,x_ref,x_init):
-
-    # Setup solver
-    solver = setup_mpc_solver(Tf, N)
+def run_mpc(Tf,N,Nsim,x_ref,x_init,solver):
 
     # Simulate system for multiple steps
     x_vec = np.zeros(Nsim)
+    v_vec = np.zeros(Nsim)
+    u_vec = np.zeros(Nsim)
+
+    # collect open loop trajectories
+    v_open_loop = np.zeros((Nsim, N+1))
+    x_open_loop = np.zeros((Nsim, N+1))
+    u_open_loop = np.zeros((Nsim, N))
+
+    # store reference trajectory
+    x_ref_open_loop = np.zeros((Nsim, N+1)) 
+    x_assumed_open_loop = np.zeros((Nsim, N+1)) 
+    
+
     x_current = x_init
 
 
+
     for i in range(Nsim):
+        # store current state
+        v_vec[i] = x_current[0]
+        x_vec[i] = x_current[1]
+
+        # Set stage-wise references and constraints
+        for k in range(N+1):
+            x_ref_k = x_ref[i+k]  # Stage-wise references
+            
+            if i > 0:
+                if k == N:
+                    x_assumed_self = x_open_loop[i-1,k] + dt * v_open_loop[i-1,k]  # this can be done since the acceleration is constrained to 0 at last stage
+                else:
+                    x_assumed_self = x_open_loop[i-1,k+1] # position comunicated to neighbours on the previous iteration (time shifted by 1)
+            else:
+                x_assumed_self = x_ref[i+k] # in the first stage use the reference as the past communicated position
+
+            p_array = np.array([x_ref_k, x_assumed_self]) # each stage knows what the final reference is
+            solver.set(k, 'p', p_array)  # Set stage-wise references
+
+            # store reference trajectory
+            x_ref_open_loop[i,k] = x_ref_k
+            x_assumed_open_loop[i,k] = x_assumed_self
         
-        # Set stage-wise references
+
+
         for k in range(N):
-            params = x_ref[i+k]  # Stage-wise references
-            solver.set(k, 'p', params)
+            if k < N-1:
+                solver.set(k, "lbu", np.array([u_min]))  # Lower bound on u at stage
+                solver.set(k, "ubu", np.array([u_max]))  # Upper bound on u at stage
+            else: # set terminal constraints on control input
+                solver.set(k, "lbu", np.array([0.0]))  # Lower bound on u at terminal stage
+                solver.set(k, "ubu", np.array([0.0]))  # Upper bound on u at terminal stage
 
-        # store new value
-        x_vec[i] = x_current[0]
 
+
+        
+        # set initial condition
         solver.set(0, "lbx", x_current)
         solver.set(0, "ubx", x_current)
 
@@ -124,38 +179,123 @@ def run_mpc(Tf,N,Nsim,x_ref,x_init):
 
         # Get optimal control input
         u0 = solver.get(0, "u")
-        #print(f"Step {i}: x = {x_current}, u = {u0}")
+        u_vec[i] = u0
+
+        # collect open loop trajectories
+        for k in range(N+1):
+            # Get predicted states
+            state = solver.get(k, "x")
+            v_open_loop[i, k] = state[0]
+            x_open_loop[i, k] = state[1]
+
+        for k in range(N):
+            u_open_loop[i, k] = solver.get(k, "u")
+
 
         # Simulate system forward
-        x_current = x_current + Tf / N * u0
+        x_current[0] += dt * u0
+        x_current[1] += dt * x_current[0]
 
 
     #solver.store_iterate("solver_iterate.json") # no need to store results
-    return x_vec
+    return v_vec,x_vec,u_vec,v_open_loop,x_open_loop,u_open_loop,x_ref_open_loop,x_assumed_open_loop
 
 
 
 # Run MPC
-Tf = 1.0  # Time horizon
-N = 20  # Number of steps in the horizon
 dt = 0.1 # Time step [s]
+N = 5  # Number of steps in the horizon
+
+
+Tf = dt * N  # Time horizon
+
+
 t_sim = 10.0  # Simulation time [s]
 Nsim = int(t_sim / dt)  # Number of simulation steps
+u_max = 1  # Maximum control input
+u_min = -1
+v_max = 0.5   # Maximum velocity
+v_min = -0.5  # Minimum velocity
+
+# Setup solver
+solver = setup_mpc_solver(Tf, N, u_max,u_min,v_max,v_min)
 
 # produce time-varying reference
 t_vec = np.linspace(0,dt * Nsim, Nsim)
 t_vec_reference = np.linspace(0,dt * (Nsim+N), Nsim+N)
 freq = 0.1 # [Hz]
-amplitude = 0.5
-x_ref = amplitude * np.sin(freq * 2*np.pi*t_vec_reference)  # Stage-wise references (make sure it's N steps longer than t_vec to not run out)
+amplitude = 0.25
+v_target = 0.25
+v_ref = v_target + amplitude * np.sin(freq * 2*np.pi*t_vec_reference)
+# forwards integrate to get x_ref
+x_ref = np.zeros(Nsim+N)
 
-x_init = np.array([-0.25])  # Initial state
+for i in range(1,Nsim+N):
+    x_ref[i] = x_ref[i-1] + dt * v_ref[i-1]
+
+#x_ref = v_target * t_vec_reference + amplitude * np.sin(freq * 2*np.pi*t_vec_reference)  # Stage-wise references (make sure it's N steps longer than t_vec to not run out)
+
+
+
+x_init = np.array([0.0,-0.1]) # important to use floats here
 # run MPC simulation loop
-x_vec = run_mpc(Tf,N,Nsim,x_ref,x_init)
+v_vec,x_vec,u_vec,v_open_loop,x_open_loop,u_open_loop,x_ref_open_loop,x_assumed_open_loop = run_mpc(Tf,N,Nsim,x_ref,x_init,solver)
 
-# plot results
-plt.figure()
-plt.plot(t_vec,x_vec,label="x",color = 'dodgerblue')
-plt.plot(t_vec_reference,x_ref,label="reference",color = 'gray',linestyle='--')
-plt.legend()
+
+
+
+
+
+# Plot results
+color_limits = 'silver'
+color_ref = 'dimgray'
+
+# Create a figure with 2 subplots: one for velocity and one for position
+fig, (axu, axv, axx) = plt.subplots(3, 1, figsize=(8, 6), sharex=True)
+
+# Plot input (u) in the top subplot
+axu.plot(t_vec, u_vec, label="u (acceleration)", color='orangered')
+axu.plot(t_vec, u_max * np.ones(Nsim), label="u max", color=color_limits, linestyle='--')
+axu.plot(t_vec, u_min * np.ones(Nsim), label="u min", color=color_limits, linestyle='--')
+axu.set_xlabel('Time (s)')
+axu.set_ylabel('u (m/s^2)')
+axu.legend(loc='upper right')
+axu.grid(True)
+
+# Plot velocity (v) in the top subplot
+axv.plot(t_vec, v_vec, label="v (velocity)", color='navy')
+axv.plot(t_vec, v_max * np.ones(Nsim), label="v max", color=color_limits, linestyle='--')
+axv.plot(t_vec, v_min * np.ones(Nsim), label="v min", color=color_limits, linestyle='--')
+axv.plot(t_vec_reference, v_ref, label="v_ref (reference)", color=color_ref, linestyle='--')
+axv.set_xlabel('Time (s)')
+axv.set_ylabel('Velocity (v)')
+axv.legend(loc='upper right')
+axv.grid(True)
+
+# Plot position (x) in the bottom subplot
+axx.plot(t_vec, x_vec, label="x (position)", color='dodgerblue')
+axx.plot(t_vec_reference, x_ref, label="x_ref (reference)", color=color_ref, linestyle='--')
+axx.set_xlabel('Time (s)')
+axx.set_ylabel('Position (x)')
+axx.legend(loc='upper right')
+axx.grid(True)
+
+
+# plot the open loop predictions over the plots 
+for i in range(Nsim):
+    if i % (N+2) == 0:
+        axu.plot(t_vec_reference[i:i+N], u_open_loop[i, :], color='k',alpha = 0.2, marker = '.' )
+        axv.plot(t_vec_reference[i:i+N+1], v_open_loop[i, :], color='k',alpha = 0.2, marker = '.' )
+        axx.plot(t_vec_reference[i:i+N+1], x_open_loop[i, :], color='k',alpha = 0.2, marker = '.' )
+        # plot reference trajectory 
+        axx.plot(t_vec_reference[i:i+N+1], x_assumed_open_loop[i, :], color='r',alpha = 0.2, marker = '.' )
+
+    # add marker on the last prediction
+    # axu.plot(t_vec_reference[i+N-1], u_open_loop[i, N-1], '.', color='k',alpha = 0.5 )
+    # axv.plot(t_vec_reference[i+N-1], v_open_loop[i, N-1], '.', color='k',alpha = 0.5 )
+    # axx.plot(t_vec_reference[i+N-1], x_open_loop[i, N-1], '.', color='k',alpha = 0.5 )
+
+
+# Display the plot
+plt.tight_layout()
 plt.show()

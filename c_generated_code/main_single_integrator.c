@@ -99,11 +99,14 @@ int main()
     // initial condition
     int idxbx0[NBX0];
     idxbx0[0] = 0;
+    idxbx0[1] = 1;
 
     double lbx0[NBX0];
     double ubx0[NBX0];
     lbx0[0] = 0;
     ubx0[0] = 0;
+    lbx0[1] = 0;
+    ubx0[1] = 0;
 
     ocp_nlp_constraints_model_set(nlp_config, nlp_dims, nlp_in, 0, "idxbx", idxbx0);
     ocp_nlp_constraints_model_set(nlp_config, nlp_dims, nlp_in, 0, "lbx", lbx0);
@@ -112,6 +115,7 @@ int main()
     // initialization for state values
     double x_init[NX];
     x_init[0] = 0.0;
+    x_init[1] = 0.0;
 
     // initial value for control input
     double u0[NU];

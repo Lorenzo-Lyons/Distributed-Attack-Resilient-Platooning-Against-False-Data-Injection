@@ -26,6 +26,8 @@ extern "C" {
 /* Add prefix to internal symbols */
 #define casadi_f0 CASADI_PREFIX(f0)
 #define casadi_s0 CASADI_PREFIX(s0)
+#define casadi_s1 CASADI_PREFIX(s1)
+#define casadi_s2 CASADI_PREFIX(s2)
 
 /* Symbol visibility in DLLs */
 #ifndef CASADI_SYMBOL_EXPORT
@@ -42,17 +44,28 @@ extern "C" {
   #endif
 #endif
 
-static const casadi_int casadi_s0[5] = {1, 1, 0, 1, 0};
+static const casadi_int casadi_s0[6] = {2, 1, 0, 2, 0, 1};
+static const casadi_int casadi_s1[9] = {2, 2, 0, 2, 4, 0, 1, 0, 1};
+static const casadi_int casadi_s2[5] = {1, 1, 0, 1, 0};
 
-/* single_integrator_expl_vde_forw:(i0,i1,i2,i3,i4)->(o0,o1,o2) */
+/* single_integrator_expl_vde_forw:(i0[2],i1[2x2],i2[2],i3,i4)->(o0[2],o1[2x2],o2[2]) */
 static int casadi_f0(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem) {
-  casadi_real a0;
+  casadi_real a0, a1;
   a0=arg[3]? arg[3][0] : 0;
   if (res[0]!=0) res[0][0]=a0;
+  a0=arg[0]? arg[0][0] : 0;
+  if (res[0]!=0) res[0][1]=a0;
   a0=0.;
   if (res[1]!=0) res[1][0]=a0;
+  a1=arg[1]? arg[1][0] : 0;
+  if (res[1]!=0) res[1][1]=a1;
+  if (res[1]!=0) res[1][2]=a0;
+  a0=arg[1]? arg[1][2] : 0;
+  if (res[1]!=0) res[1][3]=a0;
   a0=1.;
   if (res[2]!=0) res[2][0]=a0;
+  a0=arg[2]? arg[2][0] : 0;
+  if (res[2]!=0) res[2][1]=a0;
   return 0;
 }
 
@@ -117,10 +130,10 @@ CASADI_SYMBOL_EXPORT const char* single_integrator_expl_vde_forw_name_out(casadi
 CASADI_SYMBOL_EXPORT const casadi_int* single_integrator_expl_vde_forw_sparsity_in(casadi_int i) {
   switch (i) {
     case 0: return casadi_s0;
-    case 1: return casadi_s0;
+    case 1: return casadi_s1;
     case 2: return casadi_s0;
-    case 3: return casadi_s0;
-    case 4: return casadi_s0;
+    case 3: return casadi_s2;
+    case 4: return casadi_s2;
     default: return 0;
   }
 }
@@ -128,7 +141,7 @@ CASADI_SYMBOL_EXPORT const casadi_int* single_integrator_expl_vde_forw_sparsity_
 CASADI_SYMBOL_EXPORT const casadi_int* single_integrator_expl_vde_forw_sparsity_out(casadi_int i) {
   switch (i) {
     case 0: return casadi_s0;
-    case 1: return casadi_s0;
+    case 1: return casadi_s1;
     case 2: return casadi_s0;
     default: return 0;
   }

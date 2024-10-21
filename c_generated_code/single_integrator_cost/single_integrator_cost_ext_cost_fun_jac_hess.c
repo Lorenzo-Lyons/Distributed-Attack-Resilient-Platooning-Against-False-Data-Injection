@@ -30,6 +30,7 @@ extern "C" {
 #define casadi_s2 CASADI_PREFIX(s2)
 #define casadi_s3 CASADI_PREFIX(s3)
 #define casadi_s4 CASADI_PREFIX(s4)
+#define casadi_s5 CASADI_PREFIX(s5)
 #define casadi_sq CASADI_PREFIX(sq)
 
 /* Symbol visibility in DLLs */
@@ -49,18 +50,19 @@ extern "C" {
 
 casadi_real casadi_sq(casadi_real x) { return x*x;}
 
-static const casadi_int casadi_s0[5] = {1, 1, 0, 1, 0};
-static const casadi_int casadi_s1[3] = {0, 0, 0};
-static const casadi_int casadi_s2[6] = {2, 1, 0, 2, 0, 1};
-static const casadi_int casadi_s3[7] = {2, 2, 0, 1, 2, 0, 1};
-static const casadi_int casadi_s4[5] = {0, 2, 0, 0, 0};
+static const casadi_int casadi_s0[6] = {2, 1, 0, 2, 0, 1};
+static const casadi_int casadi_s1[5] = {1, 1, 0, 1, 0};
+static const casadi_int casadi_s2[3] = {0, 0, 0};
+static const casadi_int casadi_s3[7] = {3, 1, 0, 3, 0, 1, 2};
+static const casadi_int casadi_s4[8] = {3, 3, 0, 1, 1, 2, 0, 2};
+static const casadi_int casadi_s5[6] = {0, 3, 0, 0, 0, 0};
 
-/* single_integrator_cost_ext_cost_fun_jac_hess:(i0,i1,i2[],i3)->(o0,o1[2],o2[2x2,2nz],o3[],o4[0x2]) */
+/* single_integrator_cost_ext_cost_fun_jac_hess:(i0[2],i1,i2[],i3)->(o0,o1[3],o2[3x3,2nz],o3[],o4[0x3]) */
 static int casadi_f0(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem) {
   casadi_real a0, a1, a2, a3, a4, a5;
   a0=100.;
-  a1=arg[0]? arg[0][0] : 0;
-  a2=arg[3]? arg[3][0] : 0;
+  a1=arg[0]? arg[0][1] : 0;
+  a2=1.;
   a3=(a1-a2);
   a3=(a0*a3);
   a1=(a1-a2);
@@ -71,9 +73,11 @@ static int casadi_f0(const casadi_real** arg, casadi_real** res, casadi_int* iw,
   if (res[0]!=0) res[0][0]=a2;
   a4=(a4+a4);
   if (res[1]!=0) res[1][0]=a4;
+  a4=0.;
+  if (res[1]!=0) res[1][1]=a4;
   a0=(a0*a1);
   a3=(a3+a0);
-  if (res[1]!=0) res[1][1]=a3;
+  if (res[1]!=0) res[1][2]=a3;
   a3=2.;
   if (res[2]!=0) res[2][0]=a3;
   a3=200.;
@@ -143,20 +147,20 @@ CASADI_SYMBOL_EXPORT const char* single_integrator_cost_ext_cost_fun_jac_hess_na
 CASADI_SYMBOL_EXPORT const casadi_int* single_integrator_cost_ext_cost_fun_jac_hess_sparsity_in(casadi_int i) {
   switch (i) {
     case 0: return casadi_s0;
-    case 1: return casadi_s0;
-    case 2: return casadi_s1;
-    case 3: return casadi_s0;
+    case 1: return casadi_s1;
+    case 2: return casadi_s2;
+    case 3: return casadi_s1;
     default: return 0;
   }
 }
 
 CASADI_SYMBOL_EXPORT const casadi_int* single_integrator_cost_ext_cost_fun_jac_hess_sparsity_out(casadi_int i) {
   switch (i) {
-    case 0: return casadi_s0;
-    case 1: return casadi_s2;
-    case 2: return casadi_s3;
-    case 3: return casadi_s1;
-    case 4: return casadi_s4;
+    case 0: return casadi_s1;
+    case 1: return casadi_s3;
+    case 2: return casadi_s4;
+    case 3: return casadi_s2;
+    case 4: return casadi_s5;
     default: return 0;
   }
 }

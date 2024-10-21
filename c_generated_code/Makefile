@@ -36,37 +36,37 @@
 
 # model
 MODEL_SRC=
-MODEL_SRC+= single_integrator_model/single_integrator_expl_ode_fun.c
-MODEL_SRC+= single_integrator_model/single_integrator_expl_vde_forw.c
-MODEL_SRC+= single_integrator_model/single_integrator_expl_vde_adj.c
+MODEL_SRC+= double_integrator_model/double_integrator_expl_ode_fun.c
+MODEL_SRC+= double_integrator_model/double_integrator_expl_vde_forw.c
+MODEL_SRC+= double_integrator_model/double_integrator_expl_vde_adj.c
 MODEL_OBJ := $(MODEL_SRC:.c=.o)
 
 # optimal control problem - mostly CasADi exports
 OCP_SRC=
-OCP_SRC+= single_integrator_cost/single_integrator_cost_ext_cost_0_fun.c
-OCP_SRC+= single_integrator_cost/single_integrator_cost_ext_cost_0_fun_jac.c
-OCP_SRC+= single_integrator_cost/single_integrator_cost_ext_cost_0_fun_jac_hess.c
-OCP_SRC+= single_integrator_cost/single_integrator_cost_ext_cost_fun.c
-OCP_SRC+= single_integrator_cost/single_integrator_cost_ext_cost_fun_jac.c
-OCP_SRC+= single_integrator_cost/single_integrator_cost_ext_cost_fun_jac_hess.c
-OCP_SRC+= single_integrator_cost/single_integrator_cost_ext_cost_e_fun.c
-OCP_SRC+= single_integrator_cost/single_integrator_cost_ext_cost_e_fun_jac.c
-OCP_SRC+= single_integrator_cost/single_integrator_cost_ext_cost_e_fun_jac_hess.c
+OCP_SRC+= double_integrator_cost/double_integrator_cost_ext_cost_0_fun.c
+OCP_SRC+= double_integrator_cost/double_integrator_cost_ext_cost_0_fun_jac.c
+OCP_SRC+= double_integrator_cost/double_integrator_cost_ext_cost_0_fun_jac_hess.c
+OCP_SRC+= double_integrator_cost/double_integrator_cost_ext_cost_fun.c
+OCP_SRC+= double_integrator_cost/double_integrator_cost_ext_cost_fun_jac.c
+OCP_SRC+= double_integrator_cost/double_integrator_cost_ext_cost_fun_jac_hess.c
+OCP_SRC+= double_integrator_cost/double_integrator_cost_ext_cost_e_fun.c
+OCP_SRC+= double_integrator_cost/double_integrator_cost_ext_cost_e_fun_jac.c
+OCP_SRC+= double_integrator_cost/double_integrator_cost_ext_cost_e_fun_jac_hess.c
 
-OCP_SRC+= acados_solver_single_integrator.c
+OCP_SRC+= acados_solver_double_integrator.c
 OCP_OBJ := $(OCP_SRC:.c=.o)
 
 # for sim solver
-SIM_SRC= acados_sim_solver_single_integrator.c
+SIM_SRC= acados_sim_solver_double_integrator.c
 SIM_OBJ := $(SIM_SRC:.c=.o)
 
 # for target example
-EX_SRC= main_single_integrator.c
+EX_SRC= main_double_integrator.c
 EX_OBJ := $(EX_SRC:.c=.o)
 EX_EXE := $(EX_SRC:.c=)
 
 # for target example_sim
-EX_SIM_SRC= main_sim_single_integrator.c
+EX_SIM_SRC= main_sim_double_integrator.c
 EX_SIM_OBJ := $(EX_SIM_SRC:.c=.o)
 EX_SIM_EXE := $(EX_SIM_SRC:.c=)
 
@@ -107,8 +107,8 @@ LDLIBS+= -lm
 LDLIBS+= -lqpOASES_e
 
 # libraries
-LIBACADOS_SOLVER=libacados_solver_single_integrator.so
-LIBACADOS_OCP_SOLVER=libacados_ocp_solver_single_integrator.so
+LIBACADOS_SOLVER=libacados_solver_double_integrator.so
+LIBACADOS_OCP_SOLVER=libacados_ocp_solver_double_integrator.so
 LIBACADOS_SIM_SOLVER=lib$(SIM_SRC:.c=.so)
 
 # virtual targets
@@ -161,7 +161,7 @@ ocp_cython: ocp_cython_o
 	-o acados_ocp_solver_pyx.so \
 	-Wl,-rpath=$(LIB_PATH) \
 	acados_ocp_solver_pyx.o \
-	$(abspath .)/libacados_ocp_solver_single_integrator.so \
+	$(abspath .)/libacados_ocp_solver_double_integrator.so \
 	$(LDFLAGS) $(LDLIBS)
 
 # Sim Cython targets
@@ -188,7 +188,7 @@ sim_cython: sim_cython_o
 	-o acados_sim_solver_pyx.so \
 	-Wl,-rpath=$(LIB_PATH) \
 	acados_sim_solver_pyx.o \
-	$(abspath .)/libacados_sim_solver_single_integrator.so \
+	$(abspath .)/libacados_sim_solver_double_integrator.so \
 	$(LDFLAGS) $(LDLIBS)
 
 clean:
@@ -201,13 +201,13 @@ clean_ocp_shared_lib:
 	$(RM) $(OCP_OBJ)
 
 clean_ocp_cython:
-	$(RM) libacados_ocp_solver_single_integrator.so
-	$(RM) acados_solver_single_integrator.o
+	$(RM) libacados_ocp_solver_double_integrator.so
+	$(RM) acados_solver_double_integrator.o
 	$(RM) acados_ocp_solver_pyx.so
 	$(RM) acados_ocp_solver_pyx.o
 
 clean_sim_cython:
-	$(RM) libacados_sim_solver_single_integrator.so
-	$(RM) acados_sim_solver_single_integrator.o
+	$(RM) libacados_sim_solver_double_integrator.so
+	$(RM) acados_sim_solver_double_integrator.o
 	$(RM) acados_sim_solver_pyx.so
 	$(RM) acados_sim_solver_pyx.o

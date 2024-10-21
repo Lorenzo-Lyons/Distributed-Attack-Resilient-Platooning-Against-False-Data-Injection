@@ -223,7 +223,7 @@ ocp_nlp_dims* single_integrator_acados_create_2_create_and_set_dimensions(single
     nbx[0]  = NBX0;
     nsbx[0] = 0;
     ns[0] = NS - NSBX;
-    nbxe[0] = 1;
+    nbxe[0] = 2;
     ny[0] = NY0;
 
     // terminal - common
@@ -429,6 +429,7 @@ void single_integrator_acados_create_5_set_nlp_in(single_integrator_solver_capsu
     // x0
     int* idxbx0 = malloc(NBX0 * sizeof(int));
     idxbx0[0] = 0;
+    idxbx0[1] = 1;
 
     double* lubx0 = calloc(2*NBX0, sizeof(double));
     double* lbx0 = lubx0;
@@ -441,9 +442,10 @@ void single_integrator_acados_create_5_set_nlp_in(single_integrator_solver_capsu
     free(idxbx0);
     free(lubx0);
     // idxbxe_0
-    int* idxbxe_0 = malloc(1 * sizeof(int));
+    int* idxbxe_0 = malloc(2 * sizeof(int));
     
     idxbxe_0[0] = 0;
+    idxbxe_0[1] = 1;
     ocp_nlp_constraints_model_set(nlp_config, nlp_dims, nlp_in, 0, "idxbxe", idxbxe_0);
     free(idxbxe_0);
 
@@ -456,8 +458,8 @@ void single_integrator_acados_create_5_set_nlp_in(single_integrator_solver_capsu
     double* lbu = lubu;
     double* ubu = lubu + NBU;
     
-    lbu[0] = -1;
-    ubu[0] = 1;
+    lbu[0] = -0.2;
+    ubu[0] = 0.2;
 
     for (int i = 0; i < N; i++)
     {

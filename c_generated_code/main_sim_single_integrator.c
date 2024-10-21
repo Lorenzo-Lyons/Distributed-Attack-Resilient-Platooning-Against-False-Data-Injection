@@ -64,9 +64,11 @@ int main()
     // initial condition
     double x_current[NX];
     x_current[0] = 0.0;
+    x_current[1] = 0.0;
 
   
     x_current[0] = 0;
+    x_current[1] = 0;
     
   
 
