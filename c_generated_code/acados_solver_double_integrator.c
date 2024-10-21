@@ -458,8 +458,8 @@ void double_integrator_acados_create_5_set_nlp_in(double_integrator_solver_capsu
     double* lbu = lubu;
     double* ubu = lubu + NBU;
     
-    lbu[0] = -1;
-    ubu[0] = 1;
+    lbu[0] = -7.848000000000001;
+    ubu[0] = 4.905;
 
     for (int i = 0; i < N; i++)
     {
@@ -485,8 +485,7 @@ void double_integrator_acados_create_5_set_nlp_in(double_integrator_solver_capsu
     double* lbx = lubx;
     double* ubx = lubx + NBX;
     
-    lbx[0] = -0.5;
-    ubx[0] = 0.5;
+    ubx[0] = 27.77777777777778;
 
     for (int i = 1; i < N; i++)
     {

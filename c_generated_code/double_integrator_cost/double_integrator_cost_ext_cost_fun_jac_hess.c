@@ -60,7 +60,7 @@ static const casadi_int casadi_s5[6] = {0, 3, 0, 0, 0, 0};
 /* double_integrator_cost_ext_cost_fun_jac_hess:(i0[2],i1,i2[],i3[2])->(o0,o1[3],o2[3x3,2nz],o3[],o4[0x3]) */
 static int casadi_f0(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem) {
   casadi_real a0, a1, a2, a3, a4, a5;
-  a0=1.0000000000000000e-02;
+  a0=1.0000000000000001e-01;
   a1=arg[1]? arg[1][0] : 0;
   a2=casadi_sq(a1);
   a2=(a0*a2);
@@ -83,7 +83,7 @@ static int casadi_f0(const casadi_real** arg, casadi_real** res, casadi_int* iw,
   a4=(a4+a4);
   a3=(a3+a4);
   if (res[1]!=0) res[1][2]=a3;
-  a3=2.0000000000000000e-02;
+  a3=2.0000000000000001e-01;
   if (res[2]!=0) res[2][0]=a3;
   a3=4.;
   if (res[2]!=0) res[2][1]=a3;

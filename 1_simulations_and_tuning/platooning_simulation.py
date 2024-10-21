@@ -53,9 +53,8 @@ print('---------------------')
 #-----------------------------
 
 simulation_time = 200  #[s]
-#attack_strat_time = 50 #[s] if the scenario includes an attack set initial attack time
-dt_int = 0.01 #[s]
-n_follower_vehicles = 9 # number of follower vehicles (so the leader is vehicle 0)
+dt_int = 0.1 #[s]
+n_follower_vehicles = 2 # number of follower vehicles (so the leader is vehicle 0)
 
 
 # Example usage
@@ -85,16 +84,19 @@ colors = generate_color_gradient(n_follower_vehicles + 1, start_color, end_color
 # 5 = linear + u_ff, fake data injection attack sinusoidal wave leader-vehicle1
 # 6 = linear + u_ff, fake data injection attack extremely high acceleration
 # 7 = linear + u_ff, fake data injection attack extremely high acceleration and leader performs emergency brake
+# 8 = MPC (like scenario 1)
+# 9 = MPC (like scenario 3-4)
 
 
 
-scenario = 3
+scenario = 9
 
 
 # select scenario- i.e. leader behavior, using mpc, sliding mode, ecc
 v_rel_follower_1,p_rel_1,v_rel_follower_others,p_rel_others,\
 x0_leader,v0_leader,\
-leader_acc_fun,use_ff,attack_function = set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max)
+leader_acc_fun,use_ff,attack_function,\
+use_MPC = set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max)
 
 
 
@@ -127,10 +129,40 @@ for kk in range(n_follower_vehicles+1):
         x0 = p_rel_others-d+vehicle_states[kk-1][0,4] 
         v0 = vehicle_states[kk-1][0,3]+v_rel_follower_others
 
-    vehicle_vec = [*vehicle_vec, Vehicle_model(vehicle_number,x0,v0,leading_vehicle_number,controller_parameters,vehicle_parameters)]
+    vehicle_vec = [*vehicle_vec, Vehicle_model(vehicle_number,x0,v0,leading_vehicle_number,controller_parameters,vehicle_parameters,use_MPC,dt_int)]
     vehicle_i_state[0,3] = v0
     vehicle_i_state[0,4] = x0
     vehicle_states = (*vehicle_states, vehicle_i_state)
+
+
+
+# set up solver (only once because all vehicles will use the same MPC parameters)
+if use_MPC:
+    from classes_definintion import DMPC
+    # default MPC parameters
+    # self.dt_int = dt_int # Time step [s]
+    MPC_N = 20  # Number of steps in the horizon
+    Tf = dt_int * MPC_N  # Time horizon
+    v_min = vehicle_vec[0].v_min
+
+    DMPC_obj = DMPC()
+    MPC_solver = DMPC_obj.setup_mpc_solver(Tf, MPC_N,u_max,u_min,v_max,v_min)
+
+    # create reference for the leader to track
+    v_leader_reference = np.zeros(sim_steps+MPC_N+1)
+    x_leader_reference = np.zeros(sim_steps+MPC_N+1)
+    # assign initial state
+    v_leader_reference[0] = vehicle_vec[0].v
+    x_leader_reference[0] = vehicle_vec[0].x
+
+    for stage in range(0,sim_steps+MPC_N):
+        u_leader_reference = leader_acc_fun(stage*dt_int)
+        v_leader_reference[stage+1] = v_leader_reference[stage] + u_leader_reference * dt_int
+        x_leader_reference[stage+1] = x_leader_reference[stage] + v_leader_reference[stage] * dt_int
+
+
+
+
 
 
 
@@ -143,7 +175,7 @@ u_vector_leader=np.zeros(sim_steps)
 #-total acceleration of all vehicles with saturation
 u_total_followers = np.zeros((sim_steps,n_follower_vehicles))
 
-#- collect u_leader predictions for later plots
+#collect u_leader predictions for later plots
 u_leader_predictions = ()
 
 
@@ -174,8 +206,42 @@ for t in tqdm(range(sim_steps), desc ="Simulation progress"):
 
     # -- leader --
     # store leader acceleration for plots
-    vehicle_vec[0].u = leader_acc_fun(t*dt_int)
-    u_vector_leader[t] = vehicle_vec[0].u
+    if use_MPC == False:
+        vehicle_vec[0].u = leader_acc_fun(t*dt_int)
+        u_vector_leader[t] = vehicle_vec[0].u
+    # produce leader open loop prediction if using MPC
+    else: # use MPC
+
+        # compuute reference trajectory and assumed trajectory
+        x_ref_i = x_leader_reference[t:t+MPC_N+1] # take reference state
+        x_open_loop_prev = vehicle_vec[0].x_open_loop if t > 0 else x_ref_i # assign previous iteration open loop trajectory
+        v_open_loop_prev_N = vehicle_vec[0].v_open_loop_N if t > 0 else 0 # assign last stage velocity of previous iteration
+        x_current = np.array([vehicle_vec[0].v, vehicle_vec[0].x])
+
+        # set up solver for current iteration
+        MPC_solver_t,x_assumed_open_loop_i = DMPC_obj.set_up_sovler_iteration(  MPC_solver,\
+                                                                                MPC_N,\
+                                                                                x_ref_i,\
+                                                                                x_open_loop_prev,\
+                                                                                v_open_loop_prev_N,\
+                                                                                dt_int,\
+                                                                                u_min,\
+                                                                                u_max,\
+                                                                                x_current)
+        
+        # solve the optimization problem
+        # Solve MPC problem
+        u_open_loop,v_open_loop,x_open_loop = DMPC_obj.solve_mpc(MPC_solver_t,MPC_N)
+
+        # store assumed leader trajectory
+        vehicle_vec[0].x_open_loop = x_open_loop
+        vehicle_vec[0].v_open_loop_N = v_open_loop[-1]
+
+        # assign control input to leader
+        vehicle_vec[0].u = u_open_loop[0]
+        u_vector_leader[t] = vehicle_vec[0].u
+            
+
 
 
     # -- other vehicles --
@@ -184,41 +250,74 @@ for t in tqdm(range(sim_steps), desc ="Simulation progress"):
     #MPC_model_dynamic_constraint_obj.u.data = torch.zeros(N-1)
 
     for kk in range(1,n_follower_vehicles+1):
+        # not using MPC
+        if use_MPC == False:
+            #using feed-forward action
+            if use_ff:
 
-        #using feed-forward action
-        if use_ff:
-
-            if attack_function == []:
-                # copy accelration from previous vehicle
-                u_ff = vehicle_vec[kk-1].u
-                if scenario == 4: # add external damping term compensation
-                    u_ff = u_ff + k*h*(vehicle_vec[kk].v-v_d)
-            else:
-                if kk ==1: #simulate an attack between leader and vehicle 1
-                    u_ff = attack_function(t*dt_int,vehicle_vec[kk-1].u)
-                else:
+                if attack_function == []:
+                    # copy accelration from previous vehicle
                     u_ff = vehicle_vec[kk-1].u
+                    if scenario == 4: # add external damping term compensation
+                        u_ff = u_ff + k*h*(vehicle_vec[kk].v-v_d)
+                else:
+                    if kk ==1: #simulate an attack between leader and vehicle 1
+                        u_ff = attack_function(t*dt_int,vehicle_vec[kk-1].u)
+                    else:
+                        u_ff = vehicle_vec[kk-1].u
 
 
-            # apply constraints to u_ff
-            alpha = 0.95 # lowering this number ensures a bit of margin before triggering the emergency brake manoeuvre 
-            u_ff_max = k * (d * alpha + h*(vehicle_vec[kk].v - v_d)) 
-            max_p_rel =  d - c/k*(vehicle_states[kk][t,0]) # vehicle_states[kk][t,0] = relative velocity
+                # apply constraints to u_ff
+                alpha = 0.95 # lowering this number ensures a bit of margin before triggering the emergency brake manoeuvre 
+                u_ff_max = k * (d * alpha + h*(vehicle_vec[kk].v - v_d)) 
+                max_p_rel =  d - c/k*(vehicle_states[kk][t,0]) # vehicle_states[kk][t,0] = relative velocity
 
-            if (vehicle_states[kk][t,1]) >= max_p_rel:
+                if (vehicle_states[kk][t,1]) >= max_p_rel:
+                    u_ff = 0
+                elif u_ff > u_ff_max:
+                    u_ff = u_ff_max
+
+            else:
                 u_ff = 0
-            elif u_ff > u_ff_max:
-                u_ff = u_ff_max
-
-        else:
-            u_ff = 0
 
 
-        #compute linear controller action
-        u_lin = -k*(vehicle_states[kk][t,1]) - c*(vehicle_states[kk][t,0]) - k*h*(vehicle_vec[kk].v-v_d)
+            #compute linear controller action
+            u_lin = -k*(vehicle_states[kk][t,1]) - c*(vehicle_states[kk][t,0]) - k*h*(vehicle_vec[kk].v-v_d)
 
-        # compute total acceleration:
-        u_no_sat = u_lin + u_ff
+            # compute total acceleration:
+            u_no_sat = u_lin + u_ff
+
+        else: # using MPC
+            # compuute reference trajectory and assumed trajectory
+            x_ref_i = vehicle_vec[kk-1].x_open_loop - vehicle_vec[kk].d # reference trajectory is the lead vehicle -d
+            x_open_loop_prev = vehicle_vec[kk].x_open_loop if t > 0 else x_ref_i # assign previous iteration open loop trajectory
+            v_open_loop_prev_N = vehicle_vec[kk].v_open_loop_N if t > 0 else 0 # assign last stage velocity of previous iteration
+            x_current = np.array([vehicle_vec[kk].v, vehicle_vec[kk].x])
+
+            # set up solver for current iteration
+            MPC_solver_t,x_assumed_open_loop_i = DMPC_obj.set_up_sovler_iteration(  MPC_solver,\
+                                                                                    MPC_N,\
+                                                                                    x_ref_i,\
+                                                                                    x_open_loop_prev,\
+                                                                                    v_open_loop_prev_N,\
+                                                                                    dt_int,\
+                                                                                    u_min,\
+                                                                                    u_max,\
+                                                                                    x_current)
+            
+            # solve the optimization problem
+            # Solve MPC problem
+            u_open_loop,v_open_loop,x_open_loop = DMPC_obj.solve_mpc(MPC_solver_t,MPC_N)
+
+            # store open loop trajectory
+            #vehicle_vec[kk].x_assumed = x_assumed_open_loop_i
+            vehicle_vec[kk].x_open_loop = x_open_loop
+            vehicle_vec[kk].v_open_loop_N = v_open_loop[-1]
+
+            u_no_sat = u_open_loop[0] # select action to apply
+
+
+
         
         # apply saturation limits 
         if u_no_sat > u_max:

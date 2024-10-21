@@ -28,11 +28,181 @@ class platooning_problem_parameters():
             self.v_max = self.v_max * 1000 / 3600
 
 
+class DMPC():
+    from acados_template import AcadosOcp, AcadosOcpSolver, AcadosModel
+    
+
+    def __init__(self):
+        pass
+
+    
+    def export_double_integrator_model(self):
+        from casadi import SX, vertcat
+        from acados_template import AcadosModel
+        model_name = "double_integrator"
+
+        # States & controls
+        vel = SX.sym('v')  # velocity
+        pos = SX.sym('x')  # position
+
+        #x = vertcat(vel,pos)  # state (position)
+        u = SX.sym('u')  # control input (velocity)
+
+        p = vertcat(SX.sym('x_ref'),SX.sym('x_assumed_self'))  # reference for the state (stage-wise)
+
+        # Dynamics (continuous-time)
+        f_expl = vertcat(u, vel)
+
+        model = AcadosModel()
+        model.f_expl_expr = f_expl
+        model.x = vertcat(vel,pos)
+        model.u = u
+        model.name = model_name
+
+        # Set parameters
+        model.p = p
+
+        return model
+
+    # 2. Define the MPC solver
+    def setup_mpc_solver(self,Tf, N, u_max,u_min,v_max,v_min):
+        from acados_template import AcadosOcp, AcadosOcpSolver
+        import os
+
+        solver_file = "1_simulations_and_tuning/acados_ocp_platooning.json"
+
+        # Create ocp object
+        ocp = AcadosOcp()
+
+        # Export model
+        model = self.export_double_integrator_model()
+
+        # Set model
+        ocp.model = model
+
+        # Set dimensions
+        nx = 2  # state dimension
+        nu = 1  # input dimension
+        npar = 2  # number of parameters
+        #ny = nx + nu  # number of outputs in cost function
+
+        # Set prediction horizon
+        ocp.dims.N = N
+
+        # 1. Set cost function
+        qu = 0.1  # Control weight
+        qx = 1
+        qx_final = 10000
+
+        # The 'EXTERNAL' cost type can be used to define general cost terms
+        # We'll modify the cost to account for stage-wise references
+        ocp.cost.cost_type = 'EXTERNAL'
+        ocp.cost.cost_type_e = 'EXTERNAL'
+
+        # External cost expressions
+        x_ref = model.p[0]   # reference for the state (zero velocity)
+        x_assumed_self = model.p[1] # position comunicated to neighbours on the previous iteration
+
+        ocp.model.cost_expr_ext_cost =  qu * model.u**2 + qx * (model.x[1]-x_ref)**2 + qx * (model.x[1]-x_assumed_self)**2 # + qx * (model.x[1]-x_ref)**2 #
+        ocp.model.cost_expr_ext_cost_e =  qx_final * (model.x[1] - x_ref)**2 
 
 
+        # 2. Set constraints
+
+        # Set the state constraints bounds
+        ocp.constraints.lbx = np.array([v_min])  # Lower bound on velocity
+        ocp.constraints.ubx = np.array([v_max])  # Upper bound on velocity
+        ocp.constraints.idxbx = np.array([0])    # Specify which state is constrained (0 for velocity)
+
+
+        ocp.constraints.constr_type = 'BGH'
+        ocp.constraints.lbu = np.array([u_min])
+        ocp.constraints.ubu = np.array([u_max])
+        ocp.constraints.idxbu = np.array([0])
+
+        # # Enforce terminal control action to be zero at the last stage
+        ocp.constraints.lbu_e = np.array([0.0])  # Lower bound on terminal input
+        ocp.constraints.ubu_e = np.array([0.0])  # Upper bound on terminal input
+
+        # Initial state constraint
+        ocp.constraints.x0 = np.array([0.0, 0.0])  # Starting from position 0
+
+        # 3. Set solver options
+        ocp.solver_options.qp_solver = 'FULL_CONDENSING_QPOASES'
+        ocp.solver_options.hessian_approx = 'GAUSS_NEWTON'
+        ocp.solver_options.integrator_type = 'ERK'
+        ocp.solver_options.nlp_solver_type = 'SQP'
+        ocp.solver_options.tf = Tf
+
+        # Initialize parameters with default values (this step is important to avoid dimension mismatch)
+        ocp.parameter_values = np.zeros(npar)
+
+        # Create solver
+        acados_ocp_solver = AcadosOcpSolver(ocp, json_file=solver_file)
+
+        return acados_ocp_solver
+    
+    def set_up_sovler_iteration(self, solver,N,x_ref,x_open_loop_prev,v_open_loop_prev_N,dt,u_min,u_max,x_current):
+        # store reference trajectory
+        x_assumed_open_loop = np.zeros(N+1)
+    
+        # Set stage-wise references and constraints
+        for k in range(N+1):
+            x_ref_k = x_ref[k]  # Stage-wise references
+            
+            #if i > 0:
+            if k == N:
+                x_assumed_self = x_open_loop_prev[k] + dt * v_open_loop_prev_N  # this can be done since the acceleration is constrained to 0 at last stage
+            else:
+                x_assumed_self = x_open_loop_prev[k+1] # position comunicated to neighbours on the previous iteration (time shifted by 1)
+            # else:
+            #     x_assumed_self = x_ref[i+k] # in the first stage use the reference as the past communicated position
+
+            p_array = np.array([x_ref_k, x_assumed_self]) # each stage knows what the final reference is
+            solver.set(k, 'p', p_array)  # Set stage-wise references
+
+            # store reference trajectory
+            x_assumed_open_loop[k] = x_assumed_self
+        
+
+        for k in range(N):
+            if k < N-1:
+                solver.set(k, "lbu", np.array([u_min]))  # Lower bound on u at stage
+                solver.set(k, "ubu", np.array([u_max]))  # Upper bound on u at stage
+            else: # set terminal constraints on control input
+                solver.set(k, "lbu", np.array([0.0]))  # Lower bound on u at terminal stage
+                solver.set(k, "ubu", np.array([0.0]))  # Upper bound on u at terminal stage
+
+
+        # set initial condition
+        solver.set(0, "lbx", x_current)
+        solver.set(0, "ubx", x_current)
+
+        return solver,x_assumed_open_loop
+
+    def solve_mpc(self,solver,N):
+        # Solve MPC problem
+        status = solver.solve()
+
+        # Get optimal outputs
+        u_open_loop = np.zeros(N)
+        v_open_loop = np.zeros((N+1))
+        x_open_loop = np.zeros((N+1))
+
+        # collect open loop trajectories
+        for k in range(N+1):
+            # Get predicted states
+            state = solver.get(k, "x")
+            v_open_loop[k] = state[0]
+            x_open_loop[k] = state[1]
+
+        for k in range(N):
+            u_open_loop[k] = solver.get(k, "u")  
+
+        return u_open_loop,v_open_loop,x_open_loop
 
 class Vehicle_model():
-    def __init__(self,vehicle_number,x0,v0,leader,controller_parameters,vehicle_parameters):
+    def __init__(self,vehicle_number,x0,v0,leader,controller_parameters,vehicle_parameters,use_MPC,dt_int):
 
         #set initial state
         self.x = x0
@@ -62,6 +232,17 @@ class Vehicle_model():
         self.u_mpc = 0
         self.u_lin = 0
         self.u = 0
+
+        # #set up MPC solver if needed
+        # if use_MPC:
+        #     # default MPC parameters
+        #     self.dt_int = dt_int # Time step [s]
+        #     self.N = 20  # Number of steps in the horizon
+        #     Tf = dt_int * self.N  # Time horizon
+
+        #     self.DMPC_obj = DMPC()
+        #     self.solver = self.DMPC_obj.setup_mpc_solver(Tf, self.N,self.u_max,self.u_min,self.v_max,self.v_min)
+            
     
     def compute_control_action(self,x_leader,v_leader):
         Dp = self.x - x_leader 
@@ -111,6 +292,9 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         # leader acceleration function
         leader_acc_fun = lambda t: 0
 
+        #use MPC?
+        use_MPC = False
+
     elif scenario==2:
         #follower initial position (v=v_max)
         v_rel_follower_1 = 0
@@ -132,7 +316,8 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         amplitude = 4 #[m/s^2]
         leader_acc_fun = lambda t: np.sin(t/period*2*np.pi) * amplitude
 
-
+        #use MPC?
+        use_MPC = False
 
     elif scenario==3:
             #follower initial position (v=v_max)
@@ -155,6 +340,9 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         amplitude = 4 #[m/s^2]
         leader_acc_fun = lambda t: np.sin(t/period*2*np.pi) * amplitude
 
+        #use MPC?
+        use_MPC = False
+
     elif scenario==4:
             #follower initial position (v=v_max)
         v_rel_follower_1 = 0
@@ -176,6 +364,8 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         amplitude = 4 #[m/s^2]
         leader_acc_fun = lambda t: np.sin(t/period*2*np.pi) * amplitude
 
+        #use MPC?
+        use_MPC = False
 
     elif scenario==5:
 
@@ -202,6 +392,8 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         amplitude = 4 #[m/s^2]
         attack_function = lambda t,u_i: np.sin(t/period*2*np.pi) * amplitude
 
+        #use MPC?
+        use_MPC = False
 
     elif scenario==6:
 
@@ -225,6 +417,9 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
 
         # attack function
         attack_function = lambda t,u_i: u_max * 1000 # extremely high value
+
+        #use MPC?
+        use_MPC = False
 
     elif scenario==7:
 
@@ -250,6 +445,57 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         # attack function
         attack_function = lambda t,u_i: u_max * 1000 # extremely high value
 
+        #use MPC?
+        use_MPC = False
+
+
+    elif scenario==8:
+        #follower initial position (v=v_max)
+        v_rel_follower_1 = -5
+        p_rel_1 = -d/2  
+        #because otherwise all followers will have smaller velocity with respect to the leader
+        v_rel_follower_others = 0
+        p_rel_others = 0
+
+        # Leader
+        x0_leader = 0
+        v0_leader = v_d
+
+        #use u_ff?
+        use_ff = False
+
+        # leader acceleration function
+        leader_acc_fun = lambda t: 0
+
+        #use MPC?
+        use_MPC = True
+
+    elif scenario==9:
+        #follower initial position (v=v_max)
+        v_rel_follower_1 = 0
+        p_rel_1 = 0
+
+        #because otherwise all followers will have smaller velocity with respect to the leader
+        v_rel_follower_others = 0
+        p_rel_others = 0
+
+        # Leader
+        x0_leader = 0
+        v0_leader = v_d
+
+        #use u_ff?    
+        use_ff = True
+
+        # leader acceleration function
+        period = 10 # [s]
+        amplitude = 4 #[m/s^2]
+        leader_acc_fun = lambda t: np.sin(t/period*2*np.pi) * amplitude
+
+        #use MPC?
+        use_MPC = True
+
+
+
 
     if 'attack_function' not in locals():  
         attack_function = []
@@ -257,7 +503,8 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
 
     return v_rel_follower_1,p_rel_1,v_rel_follower_others,p_rel_others,\
             x0_leader,v0_leader,\
-            leader_acc_fun,use_ff,attack_function
+            leader_acc_fun,use_ff,attack_function,\
+            use_MPC
 
 
 

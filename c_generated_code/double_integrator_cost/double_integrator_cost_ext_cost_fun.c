@@ -54,7 +54,7 @@ static const casadi_int casadi_s2[3] = {0, 0, 0};
 /* double_integrator_cost_ext_cost_fun:(i0[2],i1,i2[],i3[2])->(o0) */
 static int casadi_f0(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem) {
   casadi_real a0, a1, a2;
-  a0=1.0000000000000000e-02;
+  a0=1.0000000000000001e-01;
   a1=arg[1]? arg[1][0] : 0;
   a1=casadi_sq(a1);
   a0=(a0*a1);
