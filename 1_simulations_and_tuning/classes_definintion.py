@@ -289,6 +289,7 @@ class Vehicle_model():
 
 
 def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
+    time_to_brake = 25 #simulation should be 200 s long
 
     if scenario==1:
         #follower initial position (v=v_max)
@@ -455,7 +456,7 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         use_ff = True
 
         # leader acceleration function
-        time_to_brake = 100 #simulation should be 200 s long
+        #time_to_brake = 100 #simulation should be 200 s long
         leader_acc_fun = lambda t: 0 if t < time_to_brake  else u_min
 
         # attack function
@@ -511,6 +512,32 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         use_MPC = True
 
 
+    elif scenario==10:
+
+        #follower initial position (v=v_max)
+        v_rel_follower_1 = 0
+        p_rel_1 = 0
+
+        #because otherwise all followers will have smaller velocity with respect to the leader
+        v_rel_follower_others = 0
+        p_rel_others = 0
+
+        # Leader
+        x0_leader = 0
+        v0_leader = v_d
+
+        #use u_ff?    
+        use_ff = True
+
+        # leader acceleration function
+        
+        leader_acc_fun = lambda t: 0 if t < time_to_brake  else u_min
+
+        # attack function
+        attack_function = lambda t: u_max  # extremely high value
+
+        #use MPC?
+        use_MPC = True
 
 
     if 'attack_function' not in locals():  

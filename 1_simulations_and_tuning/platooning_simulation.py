@@ -53,8 +53,8 @@ print('---------------------')
 #-----------------------------
 
 simulation_time = 50  #[s]  200
-dt_int = 0.1 #[s]
-n_follower_vehicles = 9 # number of follower vehicles (so the leader is vehicle 0)
+dt_int = 0.01 #[s]
+n_follower_vehicles = 1 # number of follower vehicles (so the leader is vehicle 0)
 
 
 # Example usage
@@ -62,9 +62,12 @@ n_follower_vehicles = 9 # number of follower vehicles (so the leader is vehicle 
 # end_color = "#71b6cb" 
 #colors = generate_color_gradient(n_follower_vehicles + 1, start_color, end_color)
 
-start_color = "#ea7317"
-end_color = "#57b8ff"
-colors = generate_color_1st_last_gray(n_follower_vehicles + 1, start_color, end_color)
+leader_color = "#ea7317"
+start_color = "#57b8ff"
+end_color = "#3d348b"
+colors = generate_color_1st_last_gray(n_follower_vehicles+1, start_color, end_color)
+# append leader color in front
+colors = [leader_color] + colors
 
 
 
@@ -88,10 +91,11 @@ colors = generate_color_1st_last_gray(n_follower_vehicles + 1, start_color, end_
 # 7 = linear + u_ff, fake data injection attack extremely high acceleration and leader performs emergency brake
 # 8 = MPC (like scenario 1)
 # 9 = MPC (like scenario 3-4)
+# 10 = MPC affected by FDI and leader brakes (like scenario 7)
 
 
 
-scenario = 9
+scenario = 7
 
 
 # select scenario- i.e. leader behavior, using mpc, sliding mode, ecc
@@ -159,7 +163,15 @@ if use_MPC:
 
     for stage in range(0,sim_steps+MPC_N):
         u_leader_reference = leader_acc_fun(stage*dt_int)
-        v_leader_reference[stage+1] = v_leader_reference[stage] + u_leader_reference * dt_int
+        v_ref_candidate = v_leader_reference[stage] + u_leader_reference * dt_int
+
+        if v_ref_candidate > v_max:
+            v_leader_reference[stage+1] = v_max
+        elif v_ref_candidate < 0:
+            v_leader_reference[stage+1] = 0
+        else:
+            v_leader_reference[stage+1] = v_leader_reference[stage] + u_leader_reference * dt_int
+
         x_leader_reference[stage+1] = x_leader_reference[stage] + v_leader_reference[stage] * dt_int
 
 
@@ -287,11 +299,16 @@ for t in tqdm(range(sim_steps), desc ="Simulation progress"):
 
 
                 # apply constraints to u_ff
-                alpha = 0.95 # lowering this number ensures a bit of margin before triggering the emergency brake manoeuvre 
-                u_ff_max = k * (d * alpha + h*(vehicle_vec[kk].v - v_d)) 
+                alpha_controller = 0.95 #0.95 # lowering this number ensures a bit of margin before triggering the emergency brake manoeuvre 
+                u_ff_max = k * (d * alpha_controller + h*(vehicle_vec[kk].v - v_d)) 
                 max_p_rel =  d - c/k*(vehicle_states[kk][t,0]) # vehicle_states[kk][t,0] = relative velocity
 
-                if (vehicle_states[kk][t,1]) >= max_p_rel:
+                # account for discrete time step
+                # max_v_rel_change = (u_max-u_min) * dt_int
+                # max_p_rel =  d - c/k*(vehicle_states[kk][t,0] + max_v_rel_change) # vehicle_states[kk][t,0] = relative velocity
+                p_rel_2_check = vehicle_states[kk][t,1] #+ (vehicle_states[kk][t,0])*dt_int
+
+                if p_rel_2_check >= max_p_rel: # vehicle_states[kk][t,1]
                     u_ff = 0
                 elif u_ff > u_ff_max:
                     u_ff = u_ff_max
@@ -308,11 +325,24 @@ for t in tqdm(range(sim_steps), desc ="Simulation progress"):
 
         else: # using MPC
             # compuute reference trajectory and assumed trajectory
-            x_open_loop_0 = vehicle_vec[kk].x - vehicle_vec[kk].v * dt_int + vehicle_vec[kk].v * dt_int * np.arange(0,MPC_N+1)
+            if attack_function == [] or kk != 1: # reliable communication
+                x_ref_i = vehicle_vec[kk-1].x_open_loop - vehicle_vec[kk].d # reference trajectory is the lead vehicle -d
+            
+            else: # attack between leader and vehicle 1
+                v_attack = vehicle_vec[kk-1].v # initialize attack velocity on ral value
+                x_attack = vehicle_vec[kk-1].x # initialize attack position on real value
+                x_ref_i = np.zeros(MPC_N+1)
+                for jj in range(MPC_N+1):
+                    x_ref_i[jj] = x_attack - vehicle_vec[kk].d
+                    x_attack += v_attack * dt_int
+                    v_attack += attack_function(dt_int*(t+jj)) * dt_int
 
-            x_ref_i = vehicle_vec[kk-1].x_open_loop - vehicle_vec[kk].d # reference trajectory is the lead vehicle -d
+                #x_ref_i = vehicle_vec[kk-1].x_open_loop - vehicle_vec[kk].d # reference trajectory is the lead vehicle -d
+            
+            x_open_loop_0 = vehicle_vec[kk].x - vehicle_vec[kk].v * dt_int + vehicle_vec[kk].v * dt_int * np.arange(0,MPC_N+1)
             x_open_loop_prev = vehicle_vec[kk].x_open_loop if t > 0 else x_open_loop_0 # assign previous iteration open loop trajectory
             v_open_loop_prev_N = vehicle_vec[kk].v_open_loop_N if t > 0 else vehicle_vec[kk].v # assign last stage velocity of previous iteration
+            
             x_current = np.array([vehicle_vec[kk].v, vehicle_vec[kk].x])
 
             # set up solver for current iteration
@@ -449,13 +479,14 @@ for kk in range(1,n_follower_vehicles+1):
 t_vec = np.array(range(sim_steps)) * dt_int
 plt.figure()
 for kk in range(n_follower_vehicles+1):
-    if kk==0 or kk==n_follower_vehicles:
+    if kk==0 or kk == 1 : # or kk==n_follower_vehicles
         alpha = 1
     else:
         alpha = 0.3
 
     plt.plot(t_vec,vehicle_states[kk][:,3],label='vehicle ' + str(int(kk)), color=colors[kk],alpha=alpha) 
-
+if use_MPC:
+    plt.plot(np.array(range(sim_steps+MPC_N+1)) * dt_int,v_leader_reference,color='black',linestyle='--',label='leader reference')
 plt.legend()
 plt.xlabel('time [s]')
 plt.ylabel('v [m/s]')
@@ -466,7 +497,7 @@ plt.title('Absolute Velocity')
 t_vec = np.array(range(sim_steps)) * dt_int
 plt.figure()
 for kk in range(1,n_follower_vehicles+1):
-    if kk==0 or kk==n_follower_vehicles:
+    if kk==0 or kk == 1 : # or kk==n_follower_vehicles
         alpha = 1
     else:
         alpha = 0.3
@@ -480,17 +511,28 @@ plt.title('Relative Velocity')
 
 
 # plot relative position leader vs follower 
+y_lims = [-d-1,1]
+x_lim = [0,simulation_time]
 t_vec = np.array(range(sim_steps)) * dt_int
 plt.figure()
-plt.plot(t_vec,np.ones(len(t_vec))*-d,linestyle='--',color='gray',label='d')
+if use_MPC == False:
+    plt.plot(t_vec,np.ones(len(t_vec))*(d*(-1+alpha_controller)),linestyle='--',color='gray',label='d(1-alpha)')
+plt.plot(t_vec,np.ones(len(t_vec))*-d,linestyle='--',color='gray',label='d',zorder=20)
+plt.plot(t_vec,np.zeros(len(t_vec)),linestyle='-',color="#a40606")
+plt.fill_between(t_vec, y1=0, y2=y_lims[1], color='#a40606', alpha=0.3, label='collision with predecessor')
+
 for kk in range(1,n_follower_vehicles+1):
-    if kk==0 or kk==n_follower_vehicles:
+    if kk==0 or kk == 1 : # or kk==n_follower_vehicles
         alpha = 1
     else:
         alpha = 0.3
     plt.plot( t_vec,-(vehicle_states[kk-1][:,4] - vehicle_states[kk][:,4]),label='x_rel ' + str(int(kk+1)), color=colors[kk],alpha=alpha)
-
+if attack_function != []:
+    # Plot the "x" marker at (x_marker, 0)
+    plt.plot(25, y_lims[0]+0.15, 'v', color='red', markersize=10, label='emergency brake') # check with leader function that it starts at 25s
 plt.legend()
+plt.ylim(y_lims)
+plt.xlim(x_lim)
 plt.xlabel('time [s]')
 plt.ylabel('distance [m]')
 plt.title('Relative position')
@@ -502,7 +544,7 @@ plt.plot(t_vec,u_min*np.ones(len(u_vector_leader)),linestyle='--',color='gray',l
 plt.plot(t_vec,u_max*np.ones(len(u_vector_leader)),linestyle='--',color='gray',label='u_max')
 plt.plot(t_vec,u_vector_leader,label='u leader', color=colors[0],alpha = 1)
 for kk in range(n_follower_vehicles):
-    if kk==n_follower_vehicles-1:
+    if kk == 0: # kk==n_follower_vehicles-1 or 
         alpha = 1
     else:
         alpha = 0.3
