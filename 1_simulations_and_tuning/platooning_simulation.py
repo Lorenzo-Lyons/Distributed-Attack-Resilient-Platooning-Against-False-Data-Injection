@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-from classes_definintion import platooning_problem_parameters,Vehicle_model,set_scenario_parameters,generate_color_gradient
+from classes_definintion import platooning_problem_parameters,Vehicle_model,set_scenario_parameters,generate_color_gradient,generate_color_1st_last_gray
 from tqdm import tqdm
 
 
@@ -52,17 +52,19 @@ print('---------------------')
 #----- set up simulation -----
 #-----------------------------
 
-simulation_time = 200  #[s]
+simulation_time = 50  #[s]  200
 dt_int = 0.1 #[s]
-n_follower_vehicles = 2 # number of follower vehicles (so the leader is vehicle 0)
+n_follower_vehicles = 9 # number of follower vehicles (so the leader is vehicle 0)
 
 
 # Example usage
-start_color = "#000000"
-end_color = "#71b6cb" 
+# start_color = "#000000"
+# end_color = "#71b6cb" 
+#colors = generate_color_gradient(n_follower_vehicles + 1, start_color, end_color)
 
-colors = generate_color_gradient(n_follower_vehicles + 1, start_color, end_color)
-
+start_color = "#ea7317"
+end_color = "#57b8ff"
+colors = generate_color_1st_last_gray(n_follower_vehicles + 1, start_color, end_color)
 
 
 
@@ -167,6 +169,9 @@ if use_MPC:
 
 
 
+
+
+
 # set up vectors to store the simulation results
 #-leader acceleration
 u_vector_leader=np.zeros(sim_steps)
@@ -211,37 +216,51 @@ for t in tqdm(range(sim_steps), desc ="Simulation progress"):
         u_vector_leader[t] = vehicle_vec[0].u
     # produce leader open loop prediction if using MPC
     else: # use MPC
-
         # compuute reference trajectory and assumed trajectory
+        # compute first iteration assumed trajectory
+        v_open_loop_0 = np.ones(MPC_N+1) * vehicle_vec[0].v
+        x_open_loop_0 = vehicle_vec[0].x - vehicle_vec[0].v * dt_int + vehicle_vec[0].v * dt_int * np.arange(0,MPC_N+1)
+
         x_ref_i = x_leader_reference[t:t+MPC_N+1] # take reference state
-        x_open_loop_prev = vehicle_vec[0].x_open_loop if t > 0 else x_ref_i # assign previous iteration open loop trajectory
-        v_open_loop_prev_N = vehicle_vec[0].v_open_loop_N if t > 0 else 0 # assign last stage velocity of previous iteration
+        x_open_loop_prev = vehicle_vec[0].x_open_loop if t > 0 else x_open_loop_0 # assign previous iteration open loop trajectory
+        v_open_loop_prev = vehicle_vec[0].v_open_loop if t > 0 else v_open_loop_0 # assign last stage velocity of previous iteration
         x_current = np.array([vehicle_vec[0].v, vehicle_vec[0].x])
+
+
+        
+
 
         # set up solver for current iteration
         MPC_solver_t,x_assumed_open_loop_i = DMPC_obj.set_up_sovler_iteration(  MPC_solver,\
                                                                                 MPC_N,\
                                                                                 x_ref_i,\
                                                                                 x_open_loop_prev,\
-                                                                                v_open_loop_prev_N,\
+                                                                                v_open_loop_prev[-1],\
                                                                                 dt_int,\
                                                                                 u_min,\
                                                                                 u_max,\
                                                                                 x_current)
         
+        # provide an initial guess for the solver
+        x_guess = x_open_loop_prev
+        v_guess = v_open_loop_prev
+        u_guess = vehicle_vec[0].u_open_loop if t > 0 else np.zeros(MPC_N) # assign last stage velocity of previous iteration
+
+        MPC_solver_t = DMPC_obj.set_initial_guess(MPC_solver_t,v_guess , x_guess, u_guess)
+        
         # solve the optimization problem
         # Solve MPC problem
-        u_open_loop,v_open_loop,x_open_loop = DMPC_obj.solve_mpc(MPC_solver_t,MPC_N)
+        u_open_loop_leader,v_open_loop_leader,x_open_loop_leader = DMPC_obj.solve_mpc(MPC_solver_t,MPC_N)
 
         # store assumed leader trajectory
-        vehicle_vec[0].x_open_loop = x_open_loop
-        vehicle_vec[0].v_open_loop_N = v_open_loop[-1]
+        vehicle_vec[0].x_open_loop = x_open_loop_leader
+        vehicle_vec[0].v_open_loop = v_open_loop_leader
+        vehicle_vec[0].u_open_loop = u_open_loop_leader
 
         # assign control input to leader
-        vehicle_vec[0].u = u_open_loop[0]
+        vehicle_vec[0].u = u_open_loop_leader[0]
         u_vector_leader[t] = vehicle_vec[0].u
             
-
 
 
     # -- other vehicles --
@@ -289,9 +308,11 @@ for t in tqdm(range(sim_steps), desc ="Simulation progress"):
 
         else: # using MPC
             # compuute reference trajectory and assumed trajectory
+            x_open_loop_0 = vehicle_vec[kk].x - vehicle_vec[kk].v * dt_int + vehicle_vec[kk].v * dt_int * np.arange(0,MPC_N+1)
+
             x_ref_i = vehicle_vec[kk-1].x_open_loop - vehicle_vec[kk].d # reference trajectory is the lead vehicle -d
-            x_open_loop_prev = vehicle_vec[kk].x_open_loop if t > 0 else x_ref_i # assign previous iteration open loop trajectory
-            v_open_loop_prev_N = vehicle_vec[kk].v_open_loop_N if t > 0 else 0 # assign last stage velocity of previous iteration
+            x_open_loop_prev = vehicle_vec[kk].x_open_loop if t > 0 else x_open_loop_0 # assign previous iteration open loop trajectory
+            v_open_loop_prev_N = vehicle_vec[kk].v_open_loop_N if t > 0 else vehicle_vec[kk].v # assign last stage velocity of previous iteration
             x_current = np.array([vehicle_vec[kk].v, vehicle_vec[kk].x])
 
             # set up solver for current iteration
@@ -428,7 +449,12 @@ for kk in range(1,n_follower_vehicles+1):
 t_vec = np.array(range(sim_steps)) * dt_int
 plt.figure()
 for kk in range(n_follower_vehicles+1):
-    plt.plot(t_vec,vehicle_states[kk][:,3],label='vehicle ' + str(int(kk)), color=colors[kk]) 
+    if kk==0 or kk==n_follower_vehicles:
+        alpha = 1
+    else:
+        alpha = 0.3
+
+    plt.plot(t_vec,vehicle_states[kk][:,3],label='vehicle ' + str(int(kk)), color=colors[kk],alpha=alpha) 
 
 plt.legend()
 plt.xlabel('time [s]')
@@ -440,7 +466,11 @@ plt.title('Absolute Velocity')
 t_vec = np.array(range(sim_steps)) * dt_int
 plt.figure()
 for kk in range(1,n_follower_vehicles+1):
-    plt.plot(t_vec,vehicle_states[kk][:,0],label='vehicle ' + str(int(kk+1)), color=colors[kk])
+    if kk==0 or kk==n_follower_vehicles:
+        alpha = 1
+    else:
+        alpha = 0.3
+    plt.plot(t_vec,vehicle_states[kk][:,0],label='vehicle ' + str(int(kk+1)), color=colors[kk],alpha=alpha)
 
 plt.legend()
 plt.xlabel('time [s]')
@@ -454,7 +484,11 @@ t_vec = np.array(range(sim_steps)) * dt_int
 plt.figure()
 plt.plot(t_vec,np.ones(len(t_vec))*-d,linestyle='--',color='gray',label='d')
 for kk in range(1,n_follower_vehicles+1):
-    plt.plot( t_vec,-(vehicle_states[kk-1][:,4] - vehicle_states[kk][:,4]),label='x_rel ' + str(int(kk+1)), color=colors[kk])
+    if kk==0 or kk==n_follower_vehicles:
+        alpha = 1
+    else:
+        alpha = 0.3
+    plt.plot( t_vec,-(vehicle_states[kk-1][:,4] - vehicle_states[kk][:,4]),label='x_rel ' + str(int(kk+1)), color=colors[kk],alpha=alpha)
 
 plt.legend()
 plt.xlabel('time [s]')
@@ -466,9 +500,13 @@ plt.title('Relative position')
 plt.figure()
 plt.plot(t_vec,u_min*np.ones(len(u_vector_leader)),linestyle='--',color='gray',label='u_min')
 plt.plot(t_vec,u_max*np.ones(len(u_vector_leader)),linestyle='--',color='gray',label='u_max')
-plt.plot(t_vec,u_vector_leader,label='u leader', color=colors[0])
-for hh in range(n_follower_vehicles):
-    plt.plot(t_vec,u_total_followers[:,hh],label='vehicle'+str(hh+2), color=colors[hh+1])
+plt.plot(t_vec,u_vector_leader,label='u leader', color=colors[0],alpha = 1)
+for kk in range(n_follower_vehicles):
+    if kk==n_follower_vehicles-1:
+        alpha = 1
+    else:
+        alpha = 0.3
+    plt.plot(t_vec,u_total_followers[:,kk],label='vehicle'+str(kk+2), color=colors[kk+1],alpha=alpha)
 plt.ylabel('acceleration [m/s^2]')
 plt.xlabel('time [s]')
 plt.legend()

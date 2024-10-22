@@ -92,7 +92,7 @@ class DMPC():
         # 1. Set cost function
         qu = 0.1  # Control weight
         qx = 1
-        qx_final = 10000
+        qx_final = 10000 # this needs to be very high because it should really be a hard constraint in theory
 
         # The 'EXTERNAL' cost type can be used to define general cost terms
         # We'll modify the cost to account for stage-wise references
@@ -200,6 +200,22 @@ class DMPC():
             u_open_loop[k] = solver.get(k, "u")  
 
         return u_open_loop,v_open_loop,x_open_loop
+    
+
+    def set_initial_guess(self,solver, v_guess , x_guess, u_guess):
+        N = solver.acados_ocp.dims.N  # Length of the horizon
+
+        # Set initial guess for the entire horizon
+        for i in range(N):
+            solver.set(i, "x", np.array([v_guess[i],x_guess[i]]))
+            solver.set(i, "u", u_guess[i])
+
+        # Set the terminal state guess (stage N)
+        solver.set(N, "x", np.array([v_guess[N],x_guess[N]]))
+        return solver
+
+
+
 
 class Vehicle_model():
     def __init__(self,vehicle_number,x0,v0,leader,controller_parameters,vehicle_parameters,use_MPC,dt_int):
@@ -314,7 +330,7 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         # leader acceleration function
         period = 10 # [s]
         amplitude = 4 #[m/s^2]
-        leader_acc_fun = lambda t: np.sin(t/period*2*np.pi) * amplitude
+        leader_acc_fun = lambda t:  np.sin(t/period*2*np.pi-1*np.pi) * amplitude
 
         #use MPC?
         use_MPC = False
@@ -338,7 +354,7 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         # leader acceleration function
         period = 10 # [s]
         amplitude = 4 #[m/s^2]
-        leader_acc_fun = lambda t: np.sin(t/period*2*np.pi) * amplitude
+        leader_acc_fun = lambda t:  np.sin(t/period*2*np.pi-1*np.pi) * amplitude
 
         #use MPC?
         use_MPC = False
@@ -362,7 +378,7 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         # leader acceleration function
         period = 10 # [s]
         amplitude = 4 #[m/s^2]
-        leader_acc_fun = lambda t: np.sin(t/period*2*np.pi) * amplitude
+        leader_acc_fun = lambda t:  np.sin(t/period*2*np.pi-1*np.pi) * amplitude
 
         #use MPC?
         use_MPC = False
@@ -489,7 +505,7 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         # leader acceleration function
         period = 10 # [s]
         amplitude = 4 #[m/s^2]
-        leader_acc_fun = lambda t: np.sin(t/period*2*np.pi) * amplitude
+        leader_acc_fun = lambda t:  np.sin(t/period*2*np.pi-1*np.pi) * amplitude
 
         #use MPC?
         use_MPC = True
@@ -567,7 +583,38 @@ def generate_color_gradient(n, start_color, end_color):
     return gradient
 
 
+# Helper functions for hex and RGB conversion
+def hex_to_rgb2(hex_color):
+    """Convert hex color (#RRGGBB) to an RGB tuple."""
+    hex_color = hex_color.lstrip('#')
+    return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
 
+def rgb_to_hex2(rgb_color):
+    """Convert RGB tuple to hex color (#RRGGBB)."""
+    return "#{:02x}{:02x}{:02x}".format(int(rgb_color[0]), int(rgb_color[1]), int(rgb_color[2]))
+
+def generate_color_1st_last_gray(n, start_color, end_color):
+    # Convert the start and end hex colors to RGB tuples
+    start_rgb = np.array(hex_to_rgb2(start_color))
+    end_rgb = np.array(hex_to_rgb2(end_color))
+    
+    # Define the gray color (RGB value)
+    gray_rgb = np.array([128, 128, 128])  # A mid-gray
+
+    # Prepare an empty list to store the gradient colors
+    gradient = []
+
+    # First color is the start color
+    gradient.append(rgb_to_hex2(start_rgb))
+
+    # Middle colors are gray
+    for i in range(n - 2):  # n - 2 middle colors (because 1 start and 1 end color)
+        gradient.append(rgb_to_hex2(gray_rgb))
+    
+    # Last color is the end color
+    gradient.append(rgb_to_hex2(end_rgb))
+
+    return gradient
 
 
 
