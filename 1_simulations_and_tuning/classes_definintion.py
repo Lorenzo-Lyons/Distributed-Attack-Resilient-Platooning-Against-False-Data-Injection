@@ -457,7 +457,7 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
 
         # leader acceleration function
         #time_to_brake = 100 #simulation should be 200 s long
-        leader_acc_fun = lambda t: 0 if t < time_to_brake  else u_min
+        leader_acc_fun = lambda t: 0 if t < time_to_brake  else u_min # u_min * (0.5 + 0.5 *np.tanh(30*(t-time_to_brake))) #
 
         # attack function
         attack_function = lambda t,u_i: u_max * 1000 # extremely high value
@@ -539,6 +539,32 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         #use MPC?
         use_MPC = True
 
+    elif scenario==11:
+
+        #follower initial position (v=v_max)
+        v_rel_follower_1 = 0
+        p_rel_1 = 0
+
+        #because otherwise all followers will have smaller velocity with respect to the leader
+        v_rel_follower_others = 0
+        p_rel_others = 0
+
+        # Leader
+        x0_leader = 0
+        v0_leader = v_d
+
+        #use u_ff?    
+        use_ff = False
+
+        # leader acceleration function
+        
+        leader_acc_fun = lambda t: 0 if t < time_to_brake  else u_min
+
+        # attack function
+        #attack_function = lambda t: u_max  # extremely high value
+
+        #use MPC?
+        use_MPC = False
 
     if 'attack_function' not in locals():  
         attack_function = []

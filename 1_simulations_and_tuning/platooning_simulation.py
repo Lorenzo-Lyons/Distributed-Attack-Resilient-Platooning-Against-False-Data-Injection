@@ -28,6 +28,7 @@ d = params[3]
 
 
 
+
 #print out parameters
 print('---------------------')
 print('Problem parameters:')
@@ -55,6 +56,14 @@ print('---------------------')
 simulation_time = 50  #[s]  200
 dt_int = 0.01 #[s]
 n_follower_vehicles = 1 # number of follower vehicles (so the leader is vehicle 0)
+
+
+
+# this is needed because of the discrete time implementation, in real life it would still represent the 
+# extra safety margine needed to account for delays in detecting the emergency situation.
+max_u_change = (u_max-u_min) # in real life you know there is some actuation dynamics so you can be less conservative
+stopping_time = v_max/(-u_min)
+extra_safety_margin = dt_int * max_u_change * stopping_time # note that this goes to 0 if dt_int --> 0
 
 
 # Example usage
@@ -92,7 +101,7 @@ colors = [leader_color] + colors
 # 8 = MPC (like scenario 1)
 # 9 = MPC (like scenario 3-4)
 # 10 = MPC affected by FDI and leader brakes (like scenario 7)
-
+# 11 = linear controller with emergency brake
 
 
 scenario = 7
@@ -127,7 +136,7 @@ for kk in range(n_follower_vehicles+1):
         x0 = x0_leader
 
     elif kk==1:
-        #set up initial state of first follower vehicle
+        #set up initial state of first follower vehicle (may be different from others in some scenarios)
         x0 = p_rel_1-d+vehicle_states[kk-1][0,4] 
         v0 = vehicle_states[kk-1][0,3]+v_rel_follower_1
     else:
@@ -299,7 +308,9 @@ for t in tqdm(range(sim_steps), desc ="Simulation progress"):
 
 
                 # apply constraints to u_ff
-                alpha_controller = 0.95 #0.95 # lowering this number ensures a bit of margin before triggering the emergency brake manoeuvre 
+                # alpha_controller = 0.95 #0.95 # lowering this number ensures a bit of margin before triggering the emergency brake manoeuvre 
+                alpha_controller = 0.97 #1 - extra_safety_margin/d
+                
                 u_ff_max = k * (d * alpha_controller + h*(vehicle_vec[kk].v - v_d)) 
                 max_p_rel =  d - c/k*(vehicle_states[kk][t,0]) # vehicle_states[kk][t,0] = relative velocity
 
@@ -515,7 +526,7 @@ y_lims = [-d-1,1]
 x_lim = [0,simulation_time]
 t_vec = np.array(range(sim_steps)) * dt_int
 plt.figure()
-if use_MPC == False:
+if use_MPC == False and use_ff==True:
     plt.plot(t_vec,np.ones(len(t_vec))*(d*(-1+alpha_controller)),linestyle='--',color='gray',label='d(1-alpha)')
 plt.plot(t_vec,np.ones(len(t_vec))*-d,linestyle='--',color='gray',label='d',zorder=20)
 plt.plot(t_vec,np.zeros(len(t_vec)),linestyle='-',color="#a40606")

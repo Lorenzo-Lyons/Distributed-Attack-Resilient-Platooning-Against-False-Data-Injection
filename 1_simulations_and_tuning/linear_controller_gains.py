@@ -27,7 +27,7 @@ select_new_d_h_from_graph = False
 if dart_parameters: 
     default_d = 0.5 #[m]
 else:
-    default_d = 20 #[m]  
+    default_d = 6 #[m]  
 
 
 
