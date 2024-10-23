@@ -500,8 +500,6 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         use_ff = True
 
         # leader acceleration function
-        period = 10 # [s]
-        amplitude = 4 #[m/s^2]
         leader_acc_fun = lambda t0, t_stage:  np.sin(t_stage/period*2*np.pi+initial_phase) * amplitude
 
         #use MPC?
@@ -526,7 +524,7 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         use_ff = True
 
         # leader acceleration function
-        leader_acc_fun = lambda t: 0 if t < time_to_brake  else u_min
+        leader_acc_fun = lambda t0, t_stage: 0 if t0 < time_to_brake  else u_min
 
         # attack function
         attack_function = lambda t: u_max  # extremely high value
@@ -553,7 +551,7 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
 
         # leader acceleration function
         
-        leader_acc_fun = lambda t: 0 if t < time_to_brake  else u_min
+        leader_acc_fun = lambda t: 0 if t < time_to_brake  else u_min * 0.1
 
         # attack function
         #attack_function = lambda t: u_max  # extremely high value

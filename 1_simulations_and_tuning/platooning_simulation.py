@@ -36,7 +36,7 @@ from tqdm import tqdm
 # scenario = 7
 # dt_int = 0.0001 #[s]
 
-# # DMPC with FDI attack and emergency brake
+# DMPC with FDI attack and emergency brake
 # scenario = 10
 # dt_int = 0.1 #[s]
 
@@ -48,7 +48,7 @@ from tqdm import tqdm
 
 
 
-scenario = 12
+scenario = 11
 dt_int = 0.1 #[s]
 
 
@@ -73,10 +73,19 @@ v_max = platooning_problem_parameters_obj.v_max
 
 # load gains from previously saved values from "linear_controller_gains.py"
 params = np.load('saved_linear_controller_gains.npy')
-k = params[0]
-c = params[1]
-h = params[2]
-d = params[3]
+# k = params[0]
+# c = params[1]
+# h = params[2]
+# d = params[3]
+
+
+# string stable but not safe controller taken from the paper we got the linear controller from
+# NO! need to implement a different linear controller that uses constant time headway
+# u = k * (x_i-x_i+1-h*v+1+1) + c (v_rel) 
+k = 1
+c = 2
+h = 0.7
+d = 6
 
 
 
@@ -203,23 +212,31 @@ if use_MPC:
     # create reference for the leader to track
     v_leader_reference = np.zeros((sim_steps,MPC_N+1))
     x_leader_reference = np.zeros((sim_steps,MPC_N+1))
-    # assign initial state
-    v_leader_reference[0,0] = vehicle_vec[0].v
-    x_leader_reference[0,0] = vehicle_vec[0].x
+
 
     for t0 in range(0,sim_steps):
-        for stage in range(0,MPC_N+1):
-            u_leader_reference = leader_acc_fun(t0, stage*dt_int) # pass in both current time and open loop time
-            v_ref_candidate = v_leader_reference[t0,stage] + u_leader_reference * dt_int
+        if t0==0:
+            # assign initial state
+            v_leader_reference[t0,0] = vehicle_vec[0].v
+            x_leader_reference[t0,0] = vehicle_vec[0].x
+        else:
+            v_leader_reference[t0,0] = v_leader_reference[t0-1,1]
+            x_leader_reference[t0,0] = x_leader_reference[t0-1,1]
+
+        for stage in range(1,MPC_N+1):
+            u_leader_reference = leader_acc_fun(t0*dt_int, (t0 + stage)*dt_int) # pass in both current time and open loop time
+            v_ref_candidate = v_leader_reference[t0,stage-1] + u_leader_reference * dt_int
 
             if v_ref_candidate > v_max:
-                v_leader_reference[stage+1] = v_max
+                v_leader_reference[t0,stage] = v_max
             elif v_ref_candidate < 0:
-                v_leader_reference[stage+1] = 0
+                v_leader_reference[t0,stage] = 0
             else:
-                v_leader_reference[stage+1] = v_leader_reference[stage] + u_leader_reference * dt_int
+                v_leader_reference[t0,stage] = v_ref_candidate
 
-            x_leader_reference[stage+1] = x_leader_reference[stage] + v_leader_reference[stage] * dt_int
+            x_leader_reference[t0,stage] = x_leader_reference[t0,stage-1] + v_leader_reference[t0,stage-1] * dt_int
+
+
 
 
 
@@ -280,7 +297,9 @@ for t in tqdm(range(sim_steps), desc ="Simulation progress"):
         v_open_loop_0 = np.ones(MPC_N+1) * vehicle_vec[0].v
         x_open_loop_0 = vehicle_vec[0].x - vehicle_vec[0].v * dt_int + vehicle_vec[0].v * dt_int * np.arange(0,MPC_N+1)
 
-        x_ref_i = x_leader_reference[t:t+MPC_N+1] # take reference state
+        #x_ref_i = x_leader_reference[t:t+MPC_N+1] # take reference state
+        x_ref_i = x_leader_reference[t,:] # take reference state
+
         x_open_loop_prev = vehicle_vec[0].x_open_loop if t > 0 else x_open_loop_0 # assign previous iteration open loop trajectory
         v_open_loop_prev = vehicle_vec[0].v_open_loop if t > 0 else v_open_loop_0 # assign last stage velocity of previous iteration
         x_current = np.array([vehicle_vec[0].v, vehicle_vec[0].x])
@@ -544,13 +563,21 @@ for kk in range(n_follower_vehicles+1):
         alpha = 0.3
 
     plt.plot(t_vec,vehicle_states[kk][:,3],label='vehicle ' + str(int(kk)), color=colors[kk],alpha=alpha) 
-#if use_MPC:
-    #plt.plot(np.array(range(sim_steps+MPC_N+1)) * dt_int,v_leader_reference,color='black',linestyle='--',label='leader reference')
+if use_MPC:
+    plt.plot(np.array(range(sim_steps)) * dt_int,v_leader_reference[:,0],color='black',linestyle='--',label='leader reference')
+    for i in range(sim_steps):
+        plt.plot(np.arange(i,i+MPC_N+1)*dt_int,v_leader_reference[i,:],color='r',alpha=0.3)
+
+
 plt.plot(t_vec,np.ones(len(t_vec))*v_d,linestyle='--',color='gray',label='v_d')
 plt.legend()
 plt.xlabel('time [s]')
 plt.ylabel('v [m/s]')
 plt.title('Absolute Velocity')
+
+
+
+
 
 
 # plot relative velocity leader and follower 
