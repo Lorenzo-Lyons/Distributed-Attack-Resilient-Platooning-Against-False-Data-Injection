@@ -91,7 +91,7 @@ class DMPC():
 
         # 1. Set cost function
         qu = 0.1  # Control weight
-        qx = 1
+        qx = 4
         qx_final = 10000 # this needs to be very high because it should really be a hard constraint in theory
 
         # The 'EXTERNAL' cost type can be used to define general cost terms
@@ -103,7 +103,7 @@ class DMPC():
         x_ref = model.p[0]   # reference for the state (zero velocity)
         x_assumed_self = model.p[1] # position comunicated to neighbours on the previous iteration
 
-        ocp.model.cost_expr_ext_cost =  qu * model.u**2 + qx * (model.x[1]-x_ref)**2 + qx * (model.x[1]-x_assumed_self)**2 # + qx * (model.x[1]-x_ref)**2 #
+        ocp.model.cost_expr_ext_cost =  qu * model.u**2 + qx * (model.x[1]-x_ref)**2 + 5 * qx * (model.x[1]-x_assumed_self)**2 # + qx * (model.x[1]-x_ref)**2 #
         ocp.model.cost_expr_ext_cost_e =  qx_final * (model.x[1] - x_ref)**2 
 
 
@@ -291,6 +291,10 @@ class Vehicle_model():
 def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
     time_to_brake = 25 #simulation should be 200 s long
 
+    period = 10 # [s]
+    amplitude = 1.5
+    initial_phase = -0.5*np.pi
+
     if scenario==1:
         #follower initial position (v=v_max)
         v_rel_follower_1 = -5
@@ -329,9 +333,7 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         use_ff = False
 
         # leader acceleration function
-        period = 10 # [s]
-        amplitude = 4 #[m/s^2]
-        leader_acc_fun = lambda t:  np.sin(t/period*2*np.pi-1*np.pi) * amplitude
+        leader_acc_fun = lambda t:  np.sin(t/period*2*np.pi+initial_phase) * amplitude
 
         #use MPC?
         use_MPC = False
@@ -353,9 +355,7 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         use_ff = True
 
         # leader acceleration function
-        period = 10 # [s]
-        amplitude = 4 #[m/s^2]
-        leader_acc_fun = lambda t:  np.sin(t/period*2*np.pi-1*np.pi) * amplitude
+        leader_acc_fun = lambda t:  np.sin(t/period*2*np.pi+initial_phase) * amplitude
 
         #use MPC?
         use_MPC = False
@@ -377,9 +377,7 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         use_ff = True
 
         # leader acceleration function
-        period = 10 # [s]
-        amplitude = 4 #[m/s^2]
-        leader_acc_fun = lambda t:  np.sin(t/period*2*np.pi-1*np.pi) * amplitude
+        leader_acc_fun = lambda t:  np.sin(t/period*2*np.pi+initial_phase) * amplitude
 
         #use MPC?
         use_MPC = False
@@ -405,9 +403,7 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         leader_acc_fun = lambda t: 0
 
         # attack function
-        period = 10 # [s]
-        amplitude = 4 #[m/s^2]
-        attack_function = lambda t,u_i: np.sin(t/period*2*np.pi) * amplitude
+        attack_function = lambda t,u_i: np.sin(t/period*2*np.pi+initial_phase) * amplitude
 
         #use MPC?
         use_MPC = False
@@ -506,7 +502,7 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         # leader acceleration function
         period = 10 # [s]
         amplitude = 4 #[m/s^2]
-        leader_acc_fun = lambda t:  np.sin(t/period*2*np.pi-1*np.pi) * amplitude
+        leader_acc_fun = lambda t0, t_stage:  np.sin(t_stage/period*2*np.pi+initial_phase) * amplitude
 
         #use MPC?
         use_MPC = True
@@ -530,7 +526,6 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         use_ff = True
 
         # leader acceleration function
-        
         leader_acc_fun = lambda t: 0 if t < time_to_brake  else u_min
 
         # attack function
@@ -565,6 +560,38 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
 
         #use MPC?
         use_MPC = False
+
+    elif scenario==12:
+
+        #follower initial position (v=v_max)
+        v_rel_follower_1 = 0
+        p_rel_1 = 0
+
+        #because otherwise all followers will have smaller velocity with respect to the leader
+        v_rel_follower_others = 0
+        p_rel_others = 0
+
+        # Leader
+        x0_leader = 0
+        v0_leader = v_d
+
+        #use u_ff?    
+        use_ff = False
+
+        # leader acceleration function
+        
+        leader_acc_fun = lambda t0, t_stage: 0 if t0 < time_to_brake  else u_min
+
+        # attack function
+        #attack_function = lambda t: u_max  # extremely high value
+
+        #use MPC?
+        use_MPC = True
+
+
+
+
+
 
     if 'attack_function' not in locals():  
         attack_function = []
