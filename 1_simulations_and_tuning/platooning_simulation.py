@@ -4,7 +4,12 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from classes_definintion import platooning_problem_parameters,Vehicle_model,set_scenario_parameters,generate_color_gradient,generate_color_1st_last_gray
 from tqdm import tqdm
 
+from matplotlib import rc
+font = {'family' : 'serif',
+        #'serif': ['Times New Roman'],
+        'size'   : 20}
 
+rc('font', **font)
 
 
 # choose scenario to simulate
@@ -48,7 +53,7 @@ from tqdm import tqdm
 
 
 
-scenario = 11
+scenario = 14
 dt_int = 0.1 #[s]
 
 
@@ -70,22 +75,50 @@ u_max = platooning_problem_parameters_obj.u_max
 v_max = platooning_problem_parameters_obj.v_max 
 
 
-
 # load gains from previously saved values from "linear_controller_gains.py"
 params = np.load('saved_linear_controller_gains.npy')
-# k = params[0]
-# c = params[1]
-# h = params[2]
-# d = params[3]
+k = params[0]
+c = params[1]
+h = params[2]
+d = params[3]
 
 
 # string stable but not safe controller taken from the paper we got the linear controller from
 # NO! need to implement a different linear controller that uses constant time headway
 # u = k * (x_i-x_i+1-h*v+1+1) + c (v_rel) 
-k = 1
-c = 2
-h = 0.7
-d = 6
+k_baseline = 4.5
+h_baseline = d/(v_d)
+c_baseline = 4.5 
+#c_baseline = 2*np.sqrt(k_baseline) - h_baseline*k_baseline
+
+print('c_baseline:',c_baseline)
+
+# plot the transfer function of the linear controller
+# --- check that the system is critically damped --- 
+# this should be the case by design but just to be sure we can plot the bode diagram of the transfer function
+zero=k_baseline/c_baseline
+delta= np.sqrt((c_baseline+k_baseline*h_baseline)**2-4*k_baseline)
+pole1=(c_baseline+k_baseline*h_baseline)/(2)-delta/2
+pole2=(c_baseline+k_baseline*h_baseline)/(2)+delta/2
+print('pole1:',pole1)
+print('pole2:',pole2)
+print('zero:',zero)
+
+from scipy import signal
+import matplotlib.pyplot as plt
+
+sys = signal.TransferFunction([c_baseline, k_baseline], [1, c_baseline+k_baseline*h_baseline,k_baseline])
+w, mag, phase = signal.bode(sys)
+
+plt.figure()
+plt.semilogx(w, mag)    # Bode magnitude plot
+plt.title(' p_(i+1)/p_i Transfer function : max =' + str(mag.max()))
+#add ticks on x axis of poles and zeros
+plt.axvline(x=zero, color='r', linestyle='--',label='zero')
+plt.axvline(x=pole1, color='g', linestyle='--',label='pole1')
+plt.axvline(x=pole2, color='darkgreen', linestyle='--',label='pole2')
+plt.legend()
+
 
 
 
@@ -114,7 +147,7 @@ print('---------------------')
 #----- set up simulation -----
 #-----------------------------
 
-simulation_time = 50  #[s]  200
+simulation_time = 8  #[s]  200
 n_follower_vehicles = 9 # number of follower vehicles (so the leader is vehicle 0)
 
 
@@ -157,13 +190,13 @@ colors = [leader_color] + colors
 v_rel_follower_1,p_rel_1,v_rel_follower_others,p_rel_others,\
 x0_leader,v0_leader,\
 leader_acc_fun,use_ff,attack_function,\
-use_MPC = set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max)
+use_MPC,use_baseline_linear = set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max)
 
 
 
 
 #instantiate vehicle classes
-sim_steps = int(np.round(simulation_time/dt_int))
+sim_steps = int(np.round(simulation_time/dt_int))+1
 
 controller_parameters =[v_d,d,k,h,c] 
 vehicle_parameters = [v_max,u_max,u_min]
@@ -288,8 +321,15 @@ for t in tqdm(range(sim_steps), desc ="Simulation progress"):
     # -- leader --
     # store leader acceleration for plots
     if use_MPC == False:
-        vehicle_vec[0].u = leader_acc_fun(t*dt_int)
+        vehicle_vec[0].u = leader_acc_fun(t*dt_int,0)
+        # check if the leader has reached max velocity
+        if vehicle_vec[0].v == v_max:
+            vehicle_vec[0].u = 0
+        elif vehicle_vec[0].v == 0:
+            vehicle_vec[0].u = 0
+
         u_vector_leader[t] = vehicle_vec[0].u
+
     # produce leader open loop prediction if using MPC
     else: # use MPC
         # compuute reference trajectory and assumed trajectory
@@ -386,7 +426,11 @@ for t in tqdm(range(sim_steps), desc ="Simulation progress"):
 
 
             #compute linear controller action
-            u_lin = -k*(vehicle_states[kk][t,1]) - c*(vehicle_states[kk][t,0]) - k*h*(vehicle_vec[kk].v-v_d)
+            if use_baseline_linear:
+                #u = k * (x_i-x_i+1-h*v+1+1) + c (v_rel) 
+                u_lin = - k_baseline * (vehicle_vec[kk].x - vehicle_vec[kk-1].x + h_baseline*vehicle_vec[kk-1].v) - c_baseline*(vehicle_vec[kk].v-vehicle_vec[kk-1].v) 
+            else:
+                u_lin = - k *(vehicle_states[kk][t,1]) - c*(vehicle_states[kk][t,0]) - k*h*(vehicle_vec[kk].v-v_d)
 
             # compute total acceleration:
             u_no_sat = u_lin + u_ff
@@ -455,6 +499,13 @@ for t in tqdm(range(sim_steps), desc ="Simulation progress"):
             u = u_min
         else:
             u = u_no_sat
+
+        # check if the vehicle has reached max velocity
+        if vehicle_vec[kk].v == v_max:
+            u = 0
+        elif vehicle_vec[kk].v == 0:
+            u = 0
+
 
         # store result for later integration
         vehicle_vec[kk].u = u
@@ -598,7 +649,17 @@ plt.title('Relative Velocity')
 
 
 # plot relative position leader vs follower 
-plt.figure()
+fig_pos, (ax_pos, ax_u) = plt.subplots(nrows=2, ncols=1, figsize=(16, 8))
+fig_pos.subplots_adjust(
+top=0.955,
+bottom=0.09,
+left=0.055,
+right=0.78,
+hspace=0.405,
+wspace=0.2
+)
+
+
 
 if scenario == 9 or scenario == 3:
     y_lims = [-6.2,-5.5]
@@ -609,15 +670,15 @@ x_lim = [0,simulation_time]
 t_vec = np.array(range(sim_steps)) * dt_int
 
 if use_MPC == False and use_ff==True:
-    plt.plot(t_vec,np.ones(len(t_vec))*(d*(-1+alpha_controller)-extra_safety_margin),linestyle='--',color='gray',label='d(1-alpha)')
-plt.plot(t_vec,np.ones(len(t_vec))*-d-extra_safety_margin,linestyle='--',color='gray',label='d',zorder=20)
+    ax_pos.plot(t_vec,np.ones(len(t_vec))*(d*(-1+alpha_controller)-extra_safety_margin),linestyle='--',color='gray',label='d(1-alpha)',linewidth=3)
+ax_pos.plot(t_vec,np.ones(len(t_vec))*-d-extra_safety_margin,linestyle='--',color='gray',label='d',zorder=20,linewidth=3)
 
 # add collision zone box
 if scenario == 9 or scenario == 3:
     pass
 else:
-    plt.plot(t_vec,np.zeros(len(t_vec)),linestyle='-',color="#a40606")
-    plt.fill_between(t_vec, y1=0, y2=y_lims[1], color='#a40606', alpha=0.3, label='collision with predecessor')
+    ax_pos.plot(t_vec,np.zeros(len(t_vec)),linestyle='-',color="#a40606",linewidth=3)
+    ax_pos.fill_between(t_vec, y1=0, y2=y_lims[1], color='#a40606', alpha=0.3, label='collision')
 
 
 for kk in range(1,n_follower_vehicles+1):
@@ -634,11 +695,11 @@ for kk in range(1,n_follower_vehicles+1):
         label = 'last follower'
 
     if kk==1 or kk==2 or kk==n_follower_vehicles:
-        plt.plot( t_vec,-(vehicle_states[kk-1][:,4] - vehicle_states[kk][:,4]),label=label, color=colors[kk],alpha=alpha) #'x_rel ' + str(int(kk+1))
+        ax_pos.plot( t_vec,-(vehicle_states[kk-1][:,4] - vehicle_states[kk][:,4]),label=label, color=colors[kk],alpha=alpha,linewidth=3) #'x_rel ' + str(int(kk+1))
     else:
-        plt.plot( t_vec,-(vehicle_states[kk-1][:,4] - vehicle_states[kk][:,4]), color=colors[kk],alpha=alpha) #'x_rel ' + str(int(kk+1))
+        ax_pos.plot( t_vec,-(vehicle_states[kk-1][:,4] - vehicle_states[kk][:,4]), color=colors[kk],alpha=alpha,linewidth=3) #'x_rel ' + str(int(kk+1))
 
-    
+
 
 
 
@@ -646,30 +707,53 @@ for kk in range(1,n_follower_vehicles+1):
 
 if attack_function != []:
     # Plot the "x" marker at (x_marker, 0)
-    plt.plot(25, y_lims[0]+0.15, 'v', color='red', markersize=10, label='emergency brake') # check with leader function that it starts at 25s
-plt.legend()
-plt.ylim(y_lims)
-plt.xlim(x_lim)
-plt.xlabel('time [s]')
-plt.ylabel('distance [m]')
-plt.title('Relative position')
+    ax_pos.plot(25, y_lims[0]+0.15, 'v', color='red', markersize=10, label='emergency brake') # check with leader function that it starts at 25s
+ax_pos.legend(bbox_to_anchor=(1.01, 1.06))
+
+ax_pos.set_ylim(y_lims)
+ax_pos.set_xlim(x_lim)
+ax_pos.set_xlabel('time [s]')
+ax_pos.set_ylabel('distance [m]')
+ax_pos.set_title('Relative position')
+
+
+
+
+
 
 
 #plot acceleration
-plt.figure()
-plt.plot(t_vec,u_min*np.ones(len(u_vector_leader)),linestyle='--',color='gray',label='u_min')
-plt.plot(t_vec,u_max*np.ones(len(u_vector_leader)),linestyle='--',color='gray',label='u_max')
-plt.plot(t_vec,u_vector_leader,label='u leader', color=colors[0],alpha = 1)
+# plt.figure()
+ax_u.plot(t_vec,u_min*np.ones(len(u_vector_leader)),linestyle='--',color='gray',label='u limits',linewidth=3)
+ax_u.plot(t_vec,u_max*np.ones(len(u_vector_leader)),linestyle='--',color='gray',linewidth=3)
+ax_u.plot(t_vec,u_vector_leader,label='leader', color=colors[0],alpha = 1,linewidth=3)
 for kk in range(n_follower_vehicles):
-    if kk == 0: # kk==n_follower_vehicles-1 or 
+    if kk==n_follower_vehicles-1 or kk == 0: #  
         alpha = 1
     else:
         alpha = 0.3
-    plt.plot(t_vec,u_total_followers[:,kk],label='vehicle'+str(kk+2), color=colors[kk+1],alpha=alpha)
-plt.ylabel('acceleration [m/s^2]')
-plt.xlabel('time [s]')
-plt.legend()
-plt.title('Acceleration')
+    # determine legend entry
+    if kk == 0:
+        label = 'first follower'
+    elif kk == 1:
+        label = 'other followers'
+    elif kk == n_follower_vehicles-1:
+        label = 'last follower'
+
+    if kk==0 or kk==1 or kk==n_follower_vehicles-1:
+        ax_u.plot(t_vec,u_total_followers[:,kk],label=label, color=colors[kk+1],alpha=alpha,linewidth=3) #'x_rel ' + str(int(kk+1))
+    else:
+        ax_u.plot(t_vec,u_total_followers[:,kk], color=colors[kk+1],alpha=alpha,linewidth=3) #'x_rel ' + str(int(kk+1))
+
+    
+    
+
+
+ax_u.set_ylabel('acceleration [m/s^2]')
+ax_u.set_xlabel('time [s]')
+ax_u.set_xlim([0,simulation_time])
+ax_u.legend(bbox_to_anchor=(1.01, 1.06))
+ax_u.set_title('Acceleration')
 
 
 

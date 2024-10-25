@@ -289,7 +289,7 @@ class Vehicle_model():
 
 
 def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
-    time_to_brake = 25 #simulation should be 200 s long
+    time_to_brake = 1 #simulation should be 200 s long
 
     period = 10 # [s]
     amplitude = 1.5
@@ -315,6 +315,7 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
 
         #use MPC?
         use_MPC = False
+        use_baseline_linear = False
 
     elif scenario==2:
         #follower initial position (v=v_max)
@@ -337,6 +338,7 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
 
         #use MPC?
         use_MPC = False
+        use_baseline_linear = False
 
     elif scenario==3:
             #follower initial position (v=v_max)
@@ -359,6 +361,7 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
 
         #use MPC?
         use_MPC = False
+        use_baseline_linear = False
 
     elif scenario==4:
             #follower initial position (v=v_max)
@@ -381,6 +384,7 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
 
         #use MPC?
         use_MPC = False
+        use_baseline_linear = False
 
     elif scenario==5:
 
@@ -407,6 +411,7 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
 
         #use MPC?
         use_MPC = False
+        use_baseline_linear = False
 
     elif scenario==6:
 
@@ -433,6 +438,7 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
 
         #use MPC?
         use_MPC = False
+        use_baseline_linear = False
 
     elif scenario==7:
 
@@ -460,6 +466,7 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
 
         #use MPC?
         use_MPC = False
+        use_baseline_linear = False
 
 
     elif scenario==8:
@@ -482,6 +489,7 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
 
         #use MPC?
         use_MPC = True
+        use_baseline_linear = False
 
     elif scenario==9:
         #follower initial position (v=v_max)
@@ -504,6 +512,7 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
 
         #use MPC?
         use_MPC = True
+        use_baseline_linear = False
 
 
     elif scenario==10:
@@ -531,6 +540,7 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
 
         #use MPC?
         use_MPC = True
+        use_baseline_linear = False
 
     elif scenario==11:
 
@@ -558,6 +568,7 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
 
         #use MPC?
         use_MPC = False
+        use_baseline_linear = False
 
     elif scenario==12:
 
@@ -585,9 +596,63 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
 
         #use MPC?
         use_MPC = True
+        use_baseline_linear = False
 
+    elif scenario==13:
 
+        #follower initial position (v=v_max)
+        v_rel_follower_1 = 0
+        p_rel_1 = 0
 
+        #because otherwise all followers will have smaller velocity with respect to the leader
+        v_rel_follower_others = 0
+        p_rel_others = 0
+
+        # Leader
+        x0_leader = 0
+        v0_leader = v_d
+
+        #use u_ff?    
+        use_ff = False
+
+        # leader acceleration function
+        
+        leader_acc_fun = lambda t0, t_stage:  np.sin(t0/period*2*np.pi+initial_phase) * amplitude
+
+        # attack function
+        #attack_function = lambda t: u_max  # extremely high value
+
+        #use MPC?
+        use_MPC = False
+        use_baseline_linear = True
+
+    elif scenario==14:
+
+        #follower initial position (v=v_max)
+        v_rel_follower_1 = 0
+        p_rel_1 = 0
+
+        #because otherwise all followers will have smaller velocity with respect to the leader
+        v_rel_follower_others = 0
+        p_rel_others = 0
+
+        # Leader
+        x0_leader = 0
+        v0_leader = v_d
+
+        #use u_ff?    
+        use_ff = False
+
+        # leader acceleration function
+        
+        leader_acc_fun = lambda t0, t_stage: 0 if t0 < time_to_brake  else u_min
+
+        # attack function
+        #attack_function = lambda t: u_max  # extremely high value
+
+        #use MPC?
+        use_MPC = False
+        use_baseline_linear = True
 
 
 
@@ -598,7 +663,7 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
     return v_rel_follower_1,p_rel_1,v_rel_follower_others,p_rel_others,\
             x0_leader,v0_leader,\
             leader_acc_fun,use_ff,attack_function,\
-            use_MPC
+            use_MPC,use_baseline_linear
 
 
 
