@@ -90,8 +90,10 @@ class DMPC():
         ocp.dims.N = N
 
         # 1. Set cost function
-        qu = 0.1  # Control weight
-        qx = 4
+        qu = 1  # Control weight
+        qx = 1.6 # 1.6 for immediate crash in FDI  10 for crash during emergency brake
+
+        qx_assumed = 20
         qx_final = 10000 # this needs to be very high because it should really be a hard constraint in theory
 
         # The 'EXTERNAL' cost type can be used to define general cost terms
@@ -103,7 +105,7 @@ class DMPC():
         x_ref = model.p[0]   # reference for the state (zero velocity)
         x_assumed_self = model.p[1] # position comunicated to neighbours on the previous iteration
 
-        ocp.model.cost_expr_ext_cost =  qu * model.u**2 + qx * (model.x[1]-x_ref)**2 + 5 * qx * (model.x[1]-x_assumed_self)**2 # + qx * (model.x[1]-x_ref)**2 #
+        ocp.model.cost_expr_ext_cost =  qu * model.u**2 + qx * (model.x[1]-x_ref)**2 + qx_assumed * (model.x[1]-x_assumed_self)**2 # + qx * (model.x[1]-x_ref)**2 #
         ocp.model.cost_expr_ext_cost_e =  qx_final * (model.x[1] - x_ref)**2 
 
 
@@ -289,7 +291,7 @@ class Vehicle_model():
 
 
 def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
-    time_to_brake = 1 #simulation should be 200 s long
+    
 
     period = 10 # [s]
     amplitude = 1.5
@@ -458,11 +460,12 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         use_ff = True
 
         # leader acceleration function
-        #time_to_brake = 100 #simulation should be 200 s long
-        leader_acc_fun = lambda t: 0 if t < time_to_brake  else u_min # u_min * (0.5 + 0.5 *np.tanh(30*(t-time_to_brake))) #
+        time_to_brake = 30
+        leader_acc_fun = lambda t0, t_stage: 0 if t0 < time_to_brake  else u_min 
 
         # attack function
-        attack_function = lambda t,u_i: u_max * 1000 # extremely high value
+        time_to_attack = 10
+        attack_function = lambda t0,u_i: u_max * 1000 if t0 > time_to_attack  else leader_acc_fun(t0,0) # extremely high value for attack
 
         #use MPC?
         use_MPC = False
@@ -471,8 +474,8 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
 
     elif scenario==8:
         #follower initial position (v=v_max)
-        v_rel_follower_1 = -5
-        p_rel_1 = -d/2  
+        v_rel_follower_1 = 0
+        p_rel_1 = +d/2  
         #because otherwise all followers will have smaller velocity with respect to the leader
         v_rel_follower_others = 0
         p_rel_others = 0
@@ -485,11 +488,15 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         use_ff = False
 
         # leader acceleration function
-        leader_acc_fun = lambda t: 0
+        leader_acc_fun = lambda t0, t_stage: 0
 
         #use MPC?
         use_MPC = True
         use_baseline_linear = False
+
+        # dummy values
+        time_to_brake = 0
+        time_to_attack = 0
 
     elif scenario==9:
         #follower initial position (v=v_max)
@@ -508,11 +515,15 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         use_ff = True
 
         # leader acceleration function
+       
         leader_acc_fun = lambda t0, t_stage:  np.sin(t_stage/period*2*np.pi+initial_phase) * amplitude
 
         #use MPC?
         use_MPC = True
         use_baseline_linear = False
+
+        time_to_brake = 0 # dummy value
+        time_to_attack = 0 # dummy value
 
 
     elif scenario==10:
@@ -533,10 +544,13 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         use_ff = True
 
         # leader acceleration function
+        time_to_brake = 30 
         leader_acc_fun = lambda t0, t_stage: 0 if t0 < time_to_brake  else u_min
 
         # attack function
-        attack_function = lambda t: u_max  # extremely high value
+        time_to_attack = 10
+        attack_function = lambda t: u_max
+        #attack_function = lambda t: u_max*0.1 
 
         #use MPC?
         use_MPC = True
@@ -560,8 +574,8 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         use_ff = False
 
         # leader acceleration function
-        
-        leader_acc_fun = lambda t: 0 if t < time_to_brake  else u_min * 0.1
+        time_to_brake = 2
+        leader_acc_fun = lambda t: 0 if t < time_to_brake  else u_min
 
         # attack function
         #attack_function = lambda t: u_max  # extremely high value
@@ -569,6 +583,8 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         #use MPC?
         use_MPC = False
         use_baseline_linear = False
+        # dummy vaslues
+        time_to_attack = 0
 
     elif scenario==12:
 
@@ -588,7 +604,7 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         use_ff = False
 
         # leader acceleration function
-        
+        time_to_brake = 25
         leader_acc_fun = lambda t0, t_stage: 0 if t0 < time_to_brake  else u_min
 
         # attack function
@@ -626,6 +642,7 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         use_MPC = False
         use_baseline_linear = True
 
+
     elif scenario==14:
 
         #follower initial position (v=v_max)
@@ -644,7 +661,7 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         use_ff = False
 
         # leader acceleration function
-        
+        time_to_brake = 2
         leader_acc_fun = lambda t0, t_stage: 0 if t0 < time_to_brake  else u_min
 
         # attack function
@@ -653,6 +670,9 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         #use MPC?
         use_MPC = False
         use_baseline_linear = True
+
+        #dummy values
+        time_to_attack = 0
 
 
 
@@ -663,7 +683,7 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
     return v_rel_follower_1,p_rel_1,v_rel_follower_others,p_rel_others,\
             x0_leader,v0_leader,\
             leader_acc_fun,use_ff,attack_function,\
-            use_MPC,use_baseline_linear
+            use_MPC,use_baseline_linear,time_to_brake,time_to_attack
 
 
 
