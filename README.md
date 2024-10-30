@@ -6,7 +6,7 @@ This repo contains the code and data relative to the paper "Distributed Attack-R
 {l.lyons,l.ferranti}@tudelft.nl boldrman@fel.cvut.cz
 
 ### Installation
-No installation required for folders "1_simulations_and_tuning", and "2_platooning_experiments_data_processing".
+A working ACADOS installation is needed for folders "1_simulations_and_tuning".
 ROS packages need a working ROS installation and need to be placed in a catkin workspace. 
 
 ### 1_simulations_and_tuning
