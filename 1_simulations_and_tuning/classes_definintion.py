@@ -48,7 +48,7 @@ class DMPC():
         #x = vertcat(vel,pos)  # state (position)
         u = SX.sym('u')  # control input (velocity)
 
-        p = vertcat(SX.sym('x_ref'),SX.sym('x_assumed_self'))  # reference for the state (stage-wise)
+        p = vertcat(SX.sym('x_ref'), SX.sym('x_assumed_self'))  # reference for the state (stage-wise)
 
         # Dynamics (continuous-time)
         f_expl = vertcat(u, vel)
@@ -131,7 +131,7 @@ class DMPC():
 
         # 3. Set solver options
         ocp.solver_options.qp_solver = 'FULL_CONDENSING_QPOASES'
-        ocp.solver_options.hessian_approx = 'GAUSS_NEWTON'
+        ocp.solver_options.hessian_approx = 'GAUSS_NEWTON' # EXACT   may fix the warning
         ocp.solver_options.integrator_type = 'ERK'
         ocp.solver_options.nlp_solver_type = 'SQP'
         ocp.solver_options.tf = Tf
@@ -336,11 +336,15 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         use_ff = False
 
         # leader acceleration function
-        leader_acc_fun = lambda t:  np.sin(t/period*2*np.pi+initial_phase) * amplitude
+        leader_acc_fun = lambda t0,stage:  np.sin(t0/period*2*np.pi+initial_phase) * amplitude
 
         #use MPC?
         use_MPC = False
         use_baseline_linear = False
+
+        # dummy values
+        time_to_brake = 0
+        time_to_attack = 0
 
     elif scenario==3:
             #follower initial position (v=v_max)

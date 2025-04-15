@@ -13,51 +13,51 @@ rc('font', **font)
 
 
 # choose scenario to simulate
-# 1 = strady state behaviour linear only (staring from far away in the p_rel-v_rel plane)
-# 2 = linear controller only, leader oscillates around equilibrium point
-# 3 = linear + u_ff, leader oscillates around equilibrium point  u_ff = u_i
-# 4 = linear + u_ff, leader oscillates around equilibrium point  u_ff = u_i +kh(v_(i+1)-vD)
-# 5 = linear + u_ff, fake data injection attack sinusoidal wave leader-vehicle1
-# 6 = linear + u_ff, fake data injection attack extremely high acceleration
-# 7 = linear + u_ff, fake data injection attack extremely high acceleration and leader performs emergency brake
-# 8 = MPC (like scenario 1)
-# 9 = MPC (like scenario 3-4)
-# 10 = MPC affected by FDI and leader brakes (like scenario 7)
-# 11 = linear controller with emergency brake
-# 12 = MPC with emergency brake (no attack)
+# scenario = 1 # strady state behaviour linear only (staring from far away in the p_rel-v_rel plane)
+# scenario = 2 # linear controller only, leader oscillates around equilibrium point
+# scenario = 3 # linear + u_ff, leader oscillates around equilibrium point  u_ff = u_i
+# scenario = 4 # linear + u_ff, leader oscillates around equilibrium point  u_ff = u_i +kh(v_(i+1)-vD)
+# scenario = 5 # linear + u_ff, fake data injection attack sinusoidal wave leader-vehicle1
+# scenario = 6 # linear + u_ff, fake data injection attack extremely high acceleration
+# scenario = 7 # linear + u_ff, fake data injection attack extremely high acceleration and leader performs emergency brake
+# scenario = 8 # MPC (like scenario 1)
+# scenario = 9 # MPC (like scenario 3-4)
+# scenario = 10 # MPC affected by FDI and leader brakes (like scenario 7)
+# scenario = 11 # linear controller with emergency brake
+# scenario = 12 # MPC with emergency brake (no attack)
+
+
+
+dt_int = 0.1 #[s]
+simulation_time = 50
+
 
 
 
 # our method with sinusoidal reference
 # scenario = 3
-# dt_int = 0.1 #[s]
+
 
 # DMPC with sinusoidal reference
 # scenario = 9
-# dt_int = 0.1 #[s]
-# simulation_time = 50
 
 
 #our method with FDI attack and emergency brake
-scenario = 7
-dt_int = 0.0001 #[s]
-simulation_time = 50  #[s]  200
+# scenario = 7
+# dt_int = 0.0001 #[s] # must increase resolution
+
 
 # # DMPC with FDI attack and emergency brake
-# scenario = 10
-# dt_int = 0.1 #[s]
-# simulation_time = 50 
+scenario = 10
 
 
 # # Baseline linear controller with emergency brake
 # scenario = 14
-# dt_int = 0.1 #[s]
-# simulation_time = 50  #[s]  200
+
 
 # Our linear controller with emergency brake
 # scenario = 11
-# dt_int = 0.1 #[s]
-# simulation_time = 10  #[s]  200
+
 
 
 
@@ -750,7 +750,9 @@ for kk in range(1,n_follower_vehicles+1):
 if attack_function != []:
     # Plot the "x" marker at (x_marker, 0)
     ax_pos.axvline(x=time_to_attack, color='orange', linestyle='--',label='FDI attack',linewidth=3)
-ax_pos.axvline(x=time_to_brake, color='orangered', linestyle='--',label='emergency brake',linewidth=3)
+if time_to_brake != 0:
+    ax_pos.axvline(x=time_to_brake, color='orangered', linestyle='--',label='emergency brake',linewidth=3)
+
 
 
 ax_pos.legend(bbox_to_anchor=(1.01, 1.05))
@@ -759,7 +761,7 @@ ax_pos.set_ylim(y_lims)
 ax_pos.set_xlim(x_lim)
 ax_pos.set_yticks([0,-3,-6])
 ax_pos.set_xlabel('time [s]')
-ax_pos.set_ylabel(r'$x_i - x_{i+1}$ [m]')
+ax_pos.set_ylabel(r'$x_{i+1} - x_i$ [m]')
 #ax_pos.set_title('Relative position')
 
 
