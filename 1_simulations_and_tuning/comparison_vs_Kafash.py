@@ -172,7 +172,7 @@ def plot_ellipse(P,scale,label,ax):
 
 P_opt = np.zeros((n,n))
 objective_value = np.infty
-#R = np.diag([1/u_max_cacc**2,1/(u_max_cacc*2)**2,1/(u_max_cacc*3)**2])
+
 R = np.diag([1/u_max_cacc**2,1/u_max_cacc**2,1/u_max_cacc**2])
 
 
@@ -190,8 +190,8 @@ for i in range(len(a_vec)): # tqdm(
 
     # Constraints
     constraints = [
-        P >> 0,    # P is positive definite
-        (Q_expr + Q_expr.T) / 2 >> 0      # Q is positive semidefinite
+        P-0.0001 * np.eye(P.shape[0]) >> 0,    # P is positive definite
+        Q_expr >> 0      # Q is positive semidefinite
     ]
 
     # Objective
