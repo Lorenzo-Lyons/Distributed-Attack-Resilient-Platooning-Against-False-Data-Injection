@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from classes_definintion import platooning_problem_parameters,Vehicle_model,set_scenario_parameters,generate_color_gradient,generate_color_1st_last_gray
-from Kafash_functions import plot_ellipse,plot_trajectories_timeseries
+from Kafash_functions import plot_ellipse,plot_trajectories_timeseries,evaluate_new_bounds_with_constraints, reachable_set_given_bounds
 from tqdm import tqdm
 from scipy.linalg import sqrtm
 
@@ -98,13 +98,39 @@ def build_state_transition_matrices(Dt,k,c,h):
 
     print("F =\n", F)
     print("G =\n", G)
+
+    # check that F describes a stable system
+    eigenvalues = np.linalg.eigvals(F)
+    # print eigenvalues with 2 decimal points
+    # check if they are all in the unit circle
+    if np.all(np.abs(eigenvalues) < 1):
+        print('Eigenvalues are inside the unit circle')
+    eigenvalues = np.round(eigenvalues, 2)
+    print('Eigenvalues of F:', eigenvalues)
+
     return F,G
 
 F, G = build_state_transition_matrices(Dt,kp,kd,beta)
 
 
+# -- using our vehicle parameters --
+# load gains from previously saved values from "linear_controller_gains.py"
+testing_on_the_real_robot = False # leave value to False to simulate on full scale vehicles
+platooning_problem_parameters_obj = platooning_problem_parameters(testing_on_the_real_robot) 
+v_d = platooning_problem_parameters_obj.v_d 
+# vehicle maximum acceleration / braking
+u_min_original = platooning_problem_parameters_obj.u_min  
+u_max_original = platooning_problem_parameters_obj.u_max
+# chose min abs val because the method need symmetric bounds
+u_max = np.max(np.abs([u_max_original,u_min_original])) # [m/s^2] we will asuume all same bounds for all vehicles and symmetric in acceleration and braking
+u_max_cacc = np.array([u_max,u_max,u_max]) 
+
+print('u_max =', u_max)
+print('u_max_original =', u_max_original)
+print('u_min_original =', u_min_original)
+
 # Build matrix R with the actuation bounds for the CACC controller (assuming symmetric bound in acceleration and braking)
-u_max_cacc = np.array([1.1,0.9,1.05]) # [m/s^2] we will asuume all same bounds for all vehicles and symmetric in acceleration and braking
+#u_max_cacc = np.array([1.1,0.9,1.05]) # [m/s^2] we will asuume all same bounds for all vehicles and symmetric in acceleration and braking
 
 
 # evaluate the reachable set for the CACC controller with current bounds
@@ -129,10 +155,10 @@ m = G.shape[1]  # size of u
 I = np.eye(m)  # identity matrix of size n
 
 # define values of parameter a
-#a_vec = np.linspace(0.01, 0.99, 11)
+a_vec = np.linspace(0.8, 0.9, 11)
 #a_vec = np.linspace(0.8, 0.99, 11)
 #a_vec = np.linspace(0.83, 0.88, 11)
-a_vec = np.array([0.855]) # once we have found the optimal value we can just use this
+#a_vec = np.array([0.855]) # once we have found the optimal value we can just use this
 
 
 
@@ -157,43 +183,21 @@ objective_value = np.infty
 for i in range(len(a_vec)): # tqdm(
     a = a_vec[i]
 
-    # Define variable
-    P = cp.Variable((n, n), symmetric=True)
 
-    # Build F(P) as a CVXPY expression
-    Q_expr = cp.bmat([
-        [a * P - F.T @ P @ F,     -F.T @ P @ G],
-        [-G.T @ P @ F, (1 - a) * R - G.T @ P @ G]
-    ])
-    # np.transpose(
-    # Constraints
-    constraints = [
-        P-0.0001 * np.eye(P.shape[0]) >> 0,    # P is positive definite
-        Q_expr >> 0      # Q is positive semidefinite
-    ]
+    P , prob = reachable_set_given_bounds(a,F,G,R)
 
-    # Objective
-    objective = cp.Minimize(-cp.log_det(P))
-
-    # Problem definition and solving
-    prob = cp.Problem(objective, constraints)
-    #prob.solve(solver=cp.SCS, verbose=False)
-    prob.solve(solver=cp.CLARABEL, verbose=False) # , max_iters=1000
-
-    print('')
-    print('Problem status:', prob.status)
     print('a =', np.round(a,3), '  objective value:', np.round(prob.value,3))
 
     # Output the result
     if (prob.status == cp.OPTIMAL or prob.status == cp.OPTIMAL_INACCURATE) and prob.value < objective_value: #update optimal value
         objective_value = prob.value
         # rescale the shape of the ellips using actual bound
-        P_opt = P.value #* (1/gamma)
+        P_opt = P #* (1/gamma)
         P_2d_opt = P_opt[:2, :2]
         label_opt = 'optimal a = ' + str(np.round(a,3)) + '  objective = ' + str(np.round(prob.value,3))
 
     # Extract the top-left 2x2 block of P
-    P_2d = P.value[:2, :2]
+    P_2d = P[:2, :2]
     scale = np.sqrt(m)
     label = 'objective = ' + str(np.round(prob.value,2))
     # plot the ellips
@@ -204,8 +208,8 @@ for i in range(len(a_vec)): # tqdm(
 # plot the best ellips
 plot_ellipse(P_2d_opt,m,ax_d1d2, edgecolor='skyblue', linewidth=2,facecolor='none',label = label_opt)
 ax_d1d2.legend()
-ax_d1d2.set_xlim([-6, 6])
-ax_d1d2.set_ylim([-6, 6])
+ax_d1d2.set_xlim([-20, 20])
+ax_d1d2.set_ylim([-20, 20])
 
 
 
@@ -242,11 +246,6 @@ sim_steps = int(np.round(t_sim/dt_sim))
 
 
 
-
-
-
-
-
 # Example setup if not already defined
 # t_sim, Dt, F, G should be defined prior to this point
 # Assuming x_history already computed as per your code
@@ -279,7 +278,7 @@ for _ in range(sim_runs):
     for i in range(1,sim_steps):
         # define control input from cacc
         # emergency brake while 2nd car accelerates
-        u_cacc = np.array([[-u_max_cacc[0]],[+u_max_cacc[1]],[u_max_cacc[2]]])
+        u_cacc = np.array([[0],[+u_max_cacc[1]],[u_max_cacc[2]]])
 
         # # random input
         # u1= np.random.uniform(low=-u_max_cacc[0], high=u_max_cacc[0])
@@ -323,56 +322,25 @@ c1[0, 0] = -1
 c2 = np.zeros((n, 1))
 c2[1, 0] = -1
 # Define b1 and b2
-b1 = 1
-b2 = 1
+b1 = 6
+b2 = 6
 
 
-
-# Optimization variables
-Y = cp.Variable((n, n), PSD=True)
-R_hat_diag = cp.Variable(m)  # diagonal entries
-R_hat = cp.diag(R_hat_diag)
-
-# using Laura's solution
-#R_hat = np.diag([35.3950, 19.5614, 35.3950]) # this is the matrix that we will use to define the ellips
-
-
-
-# Define constraints
-constraints = [
-    R_hat >> R,
-    cp.quad_form(c1, Y) <= (b1 ** 2) / m,
-    cp.quad_form(c2, Y) <= (b2 ** 2) / m,
-    cp.bmat([
-        [a * Y,             np.zeros((n, m)), Y @ F.T],
-        [np.zeros((m, n)), (1 - a) * R_hat,   G.T],
-        [F @ Y,             G,                Y]
-    ]) >> 0
-]
-
-# Solve the SDP
-prob = cp.Problem(cp.Minimize(cp.trace(R_hat)), constraints)
-prob.solve(solver=cp.CLARABEL) # , max_iters=1000
-print("Problem status:", prob.status)
-
-# print("available solvers:")
-# print(cp.installed_solvers())
+Y,R_hat =evaluate_new_bounds_with_constraints(a,F,G,R,c1,c2,b1,b2)
 
 
 # Results
-print("R_hat =\n", R_hat.value)
-print("inv(Y) =\n", np.linalg.inv(Y.value))
-print("eig(Y) =\n", np.linalg.eigvals(Y.value))
+print("R_hat =\n", R_hat)
+print("inv(Y) =\n", np.linalg.inv(Y))
 
 
 # what is the 
-Y_inv = np.linalg.inv(Y.value)
+Y_inv = np.linalg.inv(Y)
 
 # plot the ellipse
-P_2d_hat = Y.value[:2, :2]
-P_2d_hat_inv = np.linalg.inv(P_2d_hat)
-plot_ellipse(P_2d_hat_inv,m,ax_d1d2,edgecolor='coral', linewidth=2,facecolor='none',label = 'R_hat')
-
+Y_inv_2d = np.linalg.inv(Y[:2, :2])
+plot_ellipse(Y_inv[:2,:2],m,ax_d1d2,edgecolor='coral', linewidth=2,facecolor='none',label = 'R_hat inverting Y full')
+plot_ellipse(Y_inv_2d,m,ax_d1d2,edgecolor='maroon', linewidth=2,facecolor='none',label = 'R_hat inverting Y[:2,:2] ')
 
 
 
@@ -391,7 +359,7 @@ ax_d1d2.legend()
 # now simulate the system with the new bounds
 # define new bounds
 # extract diag entries of R_hat
-R_hat_diag = np.diag(R_hat.value)
+R_hat_diag = np.diag(R_hat)
 u_max_controlled = np.array([np.sqrt(1/R_hat_diag[0]),
                              np.sqrt(1/R_hat_diag[1]),
                              np.sqrt(1/R_hat_diag[2])])

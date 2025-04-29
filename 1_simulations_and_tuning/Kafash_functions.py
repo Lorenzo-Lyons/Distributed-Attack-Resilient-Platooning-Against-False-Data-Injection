@@ -80,3 +80,91 @@ def plot_trajectories_timeseries(axs,time,x_history,ellipse_val,scale,add_label,
     axs[2].set_xlabel('Time [s]')
     axs[2].set_title('Ellipse Value = x^T P x, max value should be sqrt(m)')
     axs[2].legend()
+
+import cvxpy as cp
+def reachable_set_given_bounds(a,F,G,R):
+    n = F.shape[1]  # Number of states
+
+    # Define variable
+    P = cp.Variable((n, n), symmetric=True)
+
+    # Build F(P) as a CVXPY expression
+    Q_expr = cp.bmat([
+        [a * P - F.T @ P @ F,     -F.T @ P @ G],
+        [-G.T @ P @ F, (1 - a) * R - G.T @ P @ G]
+    ])
+    # np.transpose(
+    # Constraints
+    constraints = [
+        P-0.0001 * np.eye(P.shape[0]) >> 0,    # P is positive definite
+        Q_expr >> 0      # Q is positive semidefinite
+    ]
+
+    # Objective
+    objective = cp.Minimize(-cp.log_det(P))
+
+    # Problem definition and solving
+    prob = cp.Problem(objective, constraints)
+    
+    try:
+        prob.solve(solver=cp.CLARABEL, verbose=False) 
+    except:
+        print('usind SCS solver instead of CLARABEL')
+        prob.solve(solver=cp.SCS, verbose=False)
+    print('')
+    print('solved problem 8')
+    print("Problem status:", prob.status)
+    print('objective value:', prob.value)
+
+    return P.value, prob
+
+
+def evaluate_new_bounds_with_constraints(a,F,G,R,c1,c2,b1,b2):
+    n = F.shape[1]  # Number of states
+    m = G.shape[1]  # Number of inputs
+
+    # Optimization variables
+    Y = cp.Variable((n, n), symmetric=True)
+    R_hat_diag = cp.Variable(m)  # diagonal entries
+    R_hat = cp.diag(R_hat_diag)
+
+    # using Laura's solution
+    #R_hat = np.diag([35.3950, 19.5614, 35.3950]) # this is the matrix that we will use to define the ellips
+
+
+
+    # Define constraints
+    constraints = [
+        R_hat >> R,
+        Y - 0.001 * np.eye(n)>> 0,
+        cp.quad_form(c1, Y) <= (b1 ** 2) / m,
+        cp.quad_form(c2, Y) <= (b2 ** 2) / m,
+        cp.bmat([
+            [a * Y,             np.zeros((n, m)), Y @ F.T],
+            [np.zeros((m, n)), (1 - a) * R_hat,   G.T],
+            [F @ Y,             G,                Y]
+        ]) >> 0
+    ]
+
+    # Solve the SDP
+    prob = cp.Problem(cp.Minimize(cp.trace(R_hat)), constraints)
+    try:
+        prob.solve(solver=cp.CLARABEL) # , max_iters=1000
+    except:
+        print('usind SCS solver instead of CLARABEL')
+        prob.solve(solver=cp.SCS, verbose=False)
+    print('')
+    print('solving problem 13 - new bounds with constraints')
+    print("Problem status:", prob.status)
+    print('objective value:', prob.value)
+    # evaluate eigenvalues of Y
+    eigvals = np.linalg.eigvals(Y.value)
+    # print with 2 decimal points
+    print("Eigenvalues of Y: [", ", ".join(f"{val:.3f}" for val in eigvals), "]")
+
+    
+    return Y.value, R_hat.value
+
+
+
+
