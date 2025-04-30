@@ -464,12 +464,12 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         use_ff = True
 
         # leader acceleration function
-        time_to_brake = 30
+        time_to_brake = 10
         leader_acc_fun = lambda t0, t_stage: 0 if t0 < time_to_brake  else u_min 
 
         # attack function
-        time_to_attack = 10
-        attack_function = lambda t0,u_i: u_max * 1000 if t0 > time_to_attack  else leader_acc_fun(t0,0) # extremely high value for attack
+        time_to_attack = 0
+        attack_function = lambda t0,u_i: u_max if t0 > time_to_attack  else leader_acc_fun(t0,0) # extremely high value for attack
 
         #use MPC?
         use_MPC = False
@@ -548,11 +548,11 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         use_ff = True
 
         # leader acceleration function
-        time_to_brake = 30 
+        time_to_brake = 10 
         leader_acc_fun = lambda t0, t_stage: 0 if t0 < time_to_brake  else u_min
 
         # attack function
-        time_to_attack = 10
+        time_to_attack = 0
         attack_function = lambda t: u_max
         #attack_function = lambda t: u_max*0.1 
 

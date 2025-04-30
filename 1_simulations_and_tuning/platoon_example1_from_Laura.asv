@@ -48,8 +48,10 @@ disp(G);
 % Ub3 = 1.05;
 % Lb3 = -1.05;
 u_max_actuators = 4.905; % this is the real max acc capacity
-u_max = 7.848; %7.848;
 v_d = 25; % desired platooning velocity
+
+u_max = 7.848; 
+
 
 Ub1 = u_max;
 Lb1 = -u_max;
@@ -169,6 +171,16 @@ R_hat
 inv(Y) 
 eig(Y)
 
+% new bounds
+Ub1_controlled = sqrt((1/R_hat(1,1)));
+Ub2_controlled = sqrt((1/R_hat(2,2)));
+Ub3_controlled = sqrt((1/R_hat(3,3)));
+
+
+
+
+
+
 %Projection onto x1-x2 plane
 figure(1)
 hold on
@@ -210,6 +222,39 @@ axis square
 
 
 
+%evaluate reachable set using CORA
+C = [1 0 0 0 0;
+     0 1 0 0 0];
+% Define system
+sys = linearSysDT(F, G, [],C,Dt);
+
+% initial set upper and lower bound
+R0_ub = 0.1 * [2;2;1;1;1];
+R0_lb = -0.1* [2;2;1;1;1];
+% U_ub = [u_max_actuators;u_max_actuators;u_max_actuators;];
+% U_lb = [-u_max;-u_max;-u_max;];
+U_ub = [Ub1_controlled;Ub1_controlled;Ub1_controlled;];
+U_lb = [-Ub1_controlled;-Ub1_controlled;-Ub1_controlled;];
+
+
+% parameter
+params.tFinal = 100;
+params.R0 = zonotope(interval(R0_lb,R0_ub));
+params.U = zonotope(interval(U_lb,U_ub));
+% reachability settings
+options.timeStep = Dt;
+options.zonotopeOrder = 40;
+options.taylorTerms = 2;
+% reachability analysis
+R = reach(sys,params,options);
+
+figure(1); hold on;
+ 
+%useCORAcolors("CORA:contDynamics")
+plot(R,[1,2],'DisplayName','Reachable set','FaceColor', 'red','EdgeColor', 'k','alpha', 0.2)
+%plot(R.R0,[1,2],'DisplayName','Initial set')
+
+
 
 
 
@@ -219,11 +264,11 @@ axis square
 
 % simulate trajectory
 % Define simulation parameters
-t_sim = 100;                % total simulation time [s]
+t_sim = 25;                % total simulation time [s]
 dt_sim = Dt;               % time step [s]
 F_sim = F;                 % system matrix
 G_sim = G;                 % input matrix
-t_emergency_brake = 50;
+t_emergency_brake = 10;
 
 
 % Initial state: [d1_tilde; d2_tilde; v0_tilde; v1_tilde; v2_tilde]
@@ -275,11 +320,18 @@ end
 
 
 % simulate trajectory with act bounds
-% new bounds
-Ub1_controlled = sqrt((1/R_hat(1,1)));
-Ub2_controlled = sqrt((1/R_hat(2,2)));
-Ub3_controlled = sqrt((1/R_hat(3,3)));
 u_cacc = [-Ub1_controlled; Ub2_controlled; Ub3_controlled];
+
+fprintf('\n Physical actuator bounds:\n');
+disp(Ub1);
+disp(Ub2);
+disp(Ub3);
+
+fprintf('\n controlled actuator bounds:\n');
+disp(Ub1_controlled);
+disp(Ub2_controlled);
+disp(Ub3_controlled);
+
 
 add_label = true;
 for run_idx = 1:sim_runs
@@ -299,7 +351,7 @@ end
 
 
 % Create a new figure
-figure;
+figure(10);
 plot(time, x_history(3, :) + v_d, 'r', ...
      time, x_history(4, :) + v_d, 'g', ...
      time, x_history(5, :) + v_d, 'b');
@@ -471,6 +523,9 @@ xlabel('$t$', 'Interpreter', 'Latex')
 
 
 function x_history = simulate_trajecotry(sim_steps, F_sim, G_sim, x_0,dt,t_emergency_brake,u_cacc,v_d,P)
+    v_max =  27.78;
+
+
     % Preallocate state and input histories
     x_history = zeros(length(x_0), sim_steps);
     u_history = zeros(3, sim_steps);
@@ -485,19 +540,26 @@ function x_history = simulate_trajecotry(sim_steps, F_sim, G_sim, x_0,dt,t_emerg
 
         % Define control input (example: emergency brake)
         if i * dt > t_emergency_brake
-            candidate_new_x(3) = candidate_new_x(3) -7.848 * dt; %maximum braking capacity
+            candidate_new_x(3) = x_history(3, i-1) -7.848 * dt; %maximum braking capacity
+        
         end
 
 
         % apply velocity constraints
         if candidate_new_x(3) + v_d < 0
             candidate_new_x(3) = -v_d;
+        elseif candidate_new_x(3) + v_d > v_max
+            candidate_new_x(3) = v_max-v_d;
         end
         if candidate_new_x(4) + v_d < 0
             candidate_new_x(4) = -v_d;
+        elseif candidate_new_x(4) + v_d > v_max
+            candidate_new_x(4) = v_max-v_d;
         end
         if candidate_new_x(5) + v_d < 0
             candidate_new_x(5) = -v_d;
+        elseif candidate_new_x(5) + v_d > v_max
+            candidate_new_x(5) = v_max-v_d;
         end
 
         x_history(:, i) = candidate_new_x;

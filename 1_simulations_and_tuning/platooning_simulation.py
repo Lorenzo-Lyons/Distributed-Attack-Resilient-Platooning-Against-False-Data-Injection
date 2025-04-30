@@ -28,8 +28,8 @@ rc('font', **font)
 
 
 
-dt_int = 0.1 #[s]
-simulation_time = 50
+dt_int = 0.15 #[s]
+simulation_time = 30
 
 
 
@@ -42,14 +42,14 @@ simulation_time = 50
 # scenario = 9
 
 
-#our method with FDI attack and emergency brake
+# #our method with FDI attack and emergency brake
 # scenario = 7
-# dt_int = 0.0001 #[s] # must increase resolution
+# dt_int = 0.05 #[s] # must increase resolution
 
 
-# # DMPC with FDI attack and emergency brake
+# DMPC with FDI attack and emergency brake
 scenario = 10
-
+dt_int = 0.05
 
 # # Baseline linear controller with emergency brake
 # scenario = 14
@@ -149,7 +149,7 @@ print('---------------------')
 #-----------------------------
 
 
-n_follower_vehicles = 9 # number of follower vehicles (so the leader is vehicle 0)
+n_follower_vehicles = 2 # number of follower vehicles (so the leader is vehicle 0)
 
 
 # this is needed because of the discrete time implementation, in real life it would still represent the 
@@ -323,7 +323,11 @@ for t in tqdm(range(sim_steps), desc ="Simulation progress"):
     # -- leader --
     # store leader acceleration for plots
     if use_MPC == False:
-        vehicle_vec[0].u = leader_acc_fun(t*dt_int,0)
+        if scenario == 7 and t*dt_int < time_to_brake:
+            vehicle_vec[0].u = u_min - k*h*(vehicle_vec[kk].v-v_d) - c*(vehicle_vec[kk].v-v_d)
+        else:
+            vehicle_vec[0].u = leader_acc_fun(t*dt_int,0)
+
         # check if the leader has reached max velocity
         if vehicle_vec[0].v == v_max:
             vehicle_vec[0].u = 0
@@ -334,7 +338,7 @@ for t in tqdm(range(sim_steps), desc ="Simulation progress"):
 
     # produce leader open loop prediction if using MPC
     else: # use MPC
-        # compuute reference trajectory and assumed trajectory
+        # compute reference trajectory and assumed trajectory
         # compute first iteration assumed trajectory
         v_open_loop_0 = np.ones(MPC_N+1) * vehicle_vec[0].v
         x_open_loop_0 = vehicle_vec[0].x - vehicle_vec[0].v * dt_int + vehicle_vec[0].v * dt_int * np.arange(0,MPC_N+1)
@@ -378,7 +382,10 @@ for t in tqdm(range(sim_steps), desc ="Simulation progress"):
         vehicle_vec[0].x_open_loop = x_open_loop_leader
 
         # assign control input to leader
-        vehicle_vec[0].u = u_open_loop_leader[0]
+        if scenario == 10 and t*dt_int > time_to_attack:
+             vehicle_vec[0].u = u_open_loop_leader[0] + u_min
+        else:
+            vehicle_vec[0].u = u_open_loop_leader[0]
         u_vector_leader[t] = vehicle_vec[0].u
             
 

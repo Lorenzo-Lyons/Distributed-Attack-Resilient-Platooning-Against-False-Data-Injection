@@ -48,8 +48,10 @@ disp(G);
 % Ub3 = 1.05;
 % Lb3 = -1.05;
 u_max_actuators = 4.905; % this is the real max acc capacity
-u_max = 7.848; %7.848;
 v_d = 25; % desired platooning velocity
+
+u_max = 7.848; 
+
 
 Ub1 = u_max;
 Lb1 = -u_max;
@@ -93,7 +95,7 @@ best_a = NaN;
 a_vals = [];
 obj_vals = [];
 
-for a = 0.88:0.01:0.90
+for a = [0.888] %linspace(0.88,0.90,100) %0.88:0.01:0.90
     fprintf('Solving for a = %.2f\n', a);
 
     cvx_begin SDP
@@ -169,6 +171,16 @@ R_hat
 inv(Y) 
 eig(Y)
 
+% new bounds
+Ub1_controlled = sqrt((1/R_hat(1,1)));
+Ub2_controlled = sqrt((1/R_hat(2,2)));
+Ub3_controlled = sqrt((1/R_hat(3,3)));
+
+
+
+
+
+
 %Projection onto x1-x2 plane
 figure(1)
 hold on
@@ -210,6 +222,39 @@ axis square
 
 
 
+%evaluate reachable set using CORA
+C = [1 0 0 0 0;
+     0 1 0 0 0];
+% Define system
+sys = linearSysDT(F, G, [],C,Dt);
+
+% initial set upper and lower bound
+R0_ub = 0.1 * [2;2;1;1;1];
+R0_lb = -0.1* [2;2;1;1;1];
+% U_ub = [u_max_actuators;u_max_actuators;u_max_actuators;];
+% U_lb = [-u_max;-u_max;-u_max;];
+U_ub = [Ub1_controlled;Ub2_controlled;Ub3_controlled;];
+U_lb = [-Ub1_controlled;-Ub2_controlled;-Ub3_controlled;];
+
+
+% parameter
+params.tFinal = 100;
+params.R0 = zonotope(interval(R0_lb,R0_ub));
+params.U = zonotope(interval(U_lb,U_ub));
+% reachability settings
+options.timeStep = Dt;
+options.zonotopeOrder = 40;
+options.taylorTerms = 2;
+% reachability analysis
+R = reach(sys,params,options);
+
+figure(1); hold on;
+ 
+%useCORAcolors("CORA:contDynamics")
+plot(R,[1,2],'DisplayName','Reachable set','FaceAlpha',0.2)
+%plot(R.R0,[1,2],'DisplayName','Initial set')
+
+
 
 
 
@@ -219,11 +264,11 @@ axis square
 
 % simulate trajectory
 % Define simulation parameters
-t_sim = 100;                % total simulation time [s]
+t_sim = 25;                % total simulation time [s]
 dt_sim = Dt;               % time step [s]
 F_sim = F;                 % system matrix
 G_sim = G;                 % input matrix
-t_emergency_brake = 50;
+t_emergency_brake = 10;
 
 
 % Initial state: [d1_tilde; d2_tilde; v0_tilde; v1_tilde; v2_tilde]
@@ -266,7 +311,7 @@ for run_idx = 1:sim_runs
     end
 
     % Custom plot function (you need to define or adapt this)
-    plot(x_history(1, :), x_history(2, :), 'DisplayName', label_traj, 'Color', 'blue');
+%     plot(x_history(1, :), x_history(2, :), 'DisplayName', label_traj, 'Color', 'blue');
 
 end
 
@@ -275,11 +320,18 @@ end
 
 
 % simulate trajectory with act bounds
-% new bounds
-Ub1_controlled = sqrt((1/R_hat(1,1)));
-Ub2_controlled = sqrt((1/R_hat(2,2)));
-Ub3_controlled = sqrt((1/R_hat(3,3)));
 u_cacc = [-Ub1_controlled; Ub2_controlled; Ub3_controlled];
+
+fprintf('\n Physical actuator bounds:\n');
+disp(Ub1);
+disp(Ub2);
+disp(Ub3);
+
+fprintf('\n controlled actuator bounds:\n');
+disp(Ub1_controlled);
+disp(Ub2_controlled);
+disp(Ub3_controlled);
+
 
 add_label = true;
 for run_idx = 1:sim_runs
@@ -294,12 +346,17 @@ for run_idx = 1:sim_runs
 
     % Custom plot function (you need to define or adapt this)
     plot(x_history(1, :), x_history(2, :), 'DisplayName', label_traj, 'Color', 'red');
+    % Find the step where the emergency brake occurs
+    step_brake = round(t_emergency_brake / Dt);  % Compute the corresponding time step
+    % Plot a red X when the emergency brake happens
+    plot(x_history(1, step_brake), x_history(2, step_brake), 'ro', 'MarkerSize', 10, 'LineWidth', 2);
+
 
 end
 
 
 % Create a new figure
-figure;
+figure(10);
 plot(time, x_history(3, :) + v_d, 'r', ...
      time, x_history(4, :) + v_d, 'g', ...
      time, x_history(5, :) + v_d, 'b');
@@ -311,161 +368,6 @@ grid on;
 
 
 
-
-
-
-
-
-
-
-
-
-
-%% LQR design
-
-K_P = dlqr(F,G,P,R)
-R_hat_f = full(R_hat)
-eig_CL_P = eig(F-G*K_P)
-
-K_Y = dlqr(F,G, inv(Y),R_hat_f)
-eig_CL_Y = eig(F-G*K_Y)
-
-% Initial conditions
-v_opt = 16;
-d_opt = 6;
-x0 = [4;4;v_opt;v_opt;v_opt];
-gamma1_hat = 1/R_hat(1,1);
-gamma2_hat = 1/R_hat(2,2);
-gamma3_hat = 1/R_hat(3,3);
-
-Ub_hat = [sqrt(gamma1_hat);
-          sqrt(gamma2_hat);
-          sqrt(gamma3_hat)];
-
-xcl_P = [];
-w_P = [];
-xcl_Y = [];
-w_Y = [];
-x_init_P =  x0;
-x_init_Y = x0;
-attack = 1;
-if attack == 0
-for t = 0:0.5:100
-    
-    wp = min(Ub,max(-Ub,-(K_P)*x_init_P));
-    wy= min(Ub_hat,max(-Ub_hat,-(K_Y)*x_init_Y));
-    w_P = [w_P wp];
-    w_Y = [w_Y wy];
-    x_init_P = F*x_init_P+G*wp;
-    x_init_Y = F*x_init_Y+G*wy;
-    xcl_P = [xcl_P x_init_P];
-    xcl_Y = [xcl_Y x_init_Y];
-        
-end
-else
-    for t = 0:0.5:100
-    
-        wp = min(Ub,max(-Ub,-(K_P)*x_init_P));
-        wp(1) = Ub_hat(1)+0.5;
-        wy= min(Ub_hat,max(-Ub_hat,-(K_Y)*x_init_Y));
-        wy(1) =  min(Ub_hat(1),max(-Ub_hat(1),Ub_hat(1)+0.5));
-        w_P = [w_P wp];
-        w_Y = [w_Y wy];
-        x_init_P = F*x_init_P+G*wp;
-        x_init_Y = F*x_init_Y+G*wy;
-        xcl_P = [xcl_P x_init_P];
-        xcl_Y = [xcl_Y x_init_Y];
-
-    end
-end
-
-figure(2)
-hold on
-box on
-title('${d}_i$','Interpreter','Latex')
-stairs(0:0.5:100,xcl_P(1,:),'b-')
-stairs(0:0.5:100,xcl_Y(1,:),'r-')
-stairs(0:0.5:100,xcl_P(2,:),'b--')
-stairs(0:0.5:100,xcl_Y(2,:),'r--')
-leg = legend('$d_1$','$d_1$ attack', '$d_2$', '$d_2$ attack','Location','SouthEast');
-set(leg,'Interpreter','Latex');
-xlim([0 30])
-xlabel('$t$', 'Interpreter', 'Latex')
-
-
-figure(3)
-hold on
-box on
-title('${v}_i$','Interpreter','Latex')
-stairs(0:0.5:100,xcl_P(4,:),'b-')
-stairs(0:0.5:100,xcl_Y(4,:),'r-')
-stairs(0:0.5:100,xcl_P(5,:),'b--')
-stairs(0:0.5:100,xcl_Y(5,:),'r--')
-stairs(0:0.5:100,xcl_P(5,:),'b.-')
-stairs(0:0.5:100,xcl_Y(5,:),'r.-')
-leg1 = legend('$v_1$','$v_1$ attack', '$v_2$', '$v_2$ attack','$v_3$','$v_3$ attack');
-set(leg1,'Interpreter','Latex');
-xlim([0 30])
-xlabel('$t$', 'Interpreter', 'Latex')
-return
-figure(3)
-hold on
-box on
-title('${d}_2$','Interpreter','Latex')
-stairs(0:0.5:100,xcl_P(2,:),'b--')
-stairs(0:0.5:100,xcl_Y(2,:),'r-')
-xlabel('$t$', 'Interpreter', 'Latex')
-
-figure(4)
-hold on
-box on
-title('${v}_1$','Interpreter','Latex')
-stairs(0:0.5:100,xcl_P(3,:),'--')
-stairs(0:0.5:100,xcl_Y(3,:),'-')
-xlabel('$t$', 'Interpreter', 'Latex')
-figure(6)
-hold on
-box on
-title('${v}_3$','Interpreter','Latex')
-stairs(0:0.5:100,xcl_P(5,:),'--')
-stairs(0:0.5:100,xcl_Y(5,:),'-')
-xlabel('$t$', 'Interpreter', 'Latex')
-%%
-figure(7)
-hold on
-box on
-title('${w}_1$','Interpreter','Latex')
-stairs(0:0.5:100,w_P(1,:),'b-')
-stairs(0:0.5:100,w_Y(1,:),'r-')
-stairs(0:2:100,Ub(1,:)*ones(size(0:2:100)),'b--')
-stairs(0:2:100,Ub_hat(1,:)*ones(size(0:2:100)),'r--')
-stairs(0:2:100,-Ub(1,:)*ones(size(0:2:100)),'b--')
-stairs(0:2:100,-Ub_hat(1,:)*ones(size(0:2:100)),'r--')
-xlabel('$t$', 'Interpreter', 'Latex')
-
-figure(8)
-hold on
-box on
-title('${w}_2$','Interpreter','Latex')
-stairs(0:0.5:100,w_P(2,:),'--')
-stairs(0:0.5:100,w_Y(2,:),'-')
-stairs(0:2:100,Ub(2,:)*ones(size(0:2:100)),'b.-')
-stairs(0:2:100,Ub_hat(2,:)*ones(size(0:2:100)),'r.-')
-stairs(0:2:100,-Ub(2,:)*ones(size(0:2:100)),'b.-')
-stairs(0:2:100,-Ub_hat(2,:)*ones(size(0:2:100)),'r.-')
-xlabel('$t$', 'Interpreter', 'Latex')
-
-figure(9)
-hold on
-box on
-title('${w}_3$','Interpreter','Latex')
-stairs(0:0.5:100,w_P(3,:),'--')
-stairs(0:0.5:100,w_Y(3,:),'-')
-stairs(0:2:100,Ub(3,:)*ones(size(0:2:100)),'b.-')
-stairs(0:2:100,Ub_hat(3,:)*ones(size(0:2:100)),'r.-')
-stairs(0:2:100,-Ub(3,:)*ones(size(0:2:100)),'b.-')
-stairs(0:2:100,-Ub_hat(3,:)*ones(size(0:2:100)),'r.-')
-xlabel('$t$', 'Interpreter', 'Latex')
 
 
 

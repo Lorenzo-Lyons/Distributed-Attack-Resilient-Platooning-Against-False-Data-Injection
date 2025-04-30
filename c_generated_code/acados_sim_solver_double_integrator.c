@@ -74,7 +74,7 @@ int double_integrator_acados_sim_create(double_integrator_sim_solver_capsule * c
     bool tmp_bool;
 
     
-    double Tsim = 0.1;
+    double Tsim = 0.05;
 
     
     // explicit ode

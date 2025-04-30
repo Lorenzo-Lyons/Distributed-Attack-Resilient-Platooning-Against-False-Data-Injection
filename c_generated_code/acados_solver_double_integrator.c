@@ -391,7 +391,7 @@ void double_integrator_acados_create_5_set_nlp_in(double_integrator_solver_capsu
     if (new_time_steps) {
         double_integrator_acados_update_time_steps(capsule, N, new_time_steps);
     } else {// all time_steps are identical
-        double time_step = 0.1;
+        double time_step = 0.05;
         for (int i = 0; i < N; i++)
         {
             ocp_nlp_in_set(nlp_config, nlp_dims, nlp_in, i, "Ts", &time_step);
