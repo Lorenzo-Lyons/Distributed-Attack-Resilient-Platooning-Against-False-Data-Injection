@@ -55,33 +55,30 @@ static const casadi_int casadi_s3[7] = {3, 1, 0, 3, 0, 1, 2};
 
 /* double_integrator_cost_ext_cost_0_fun_jac:(i0[2],i1,i2[],i3[2])->(o0,o1[3]) */
 static int casadi_f0(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem) {
-  casadi_real a0, a1, a2, a3, a4, a5, a6;
+  casadi_real a0, a1, a2, a3, a4, a5;
   a0=arg[1]? arg[1][0] : 0;
   a1=casadi_sq(a0);
-  a2=1.6000000000000001e+00;
-  a3=arg[0]? arg[0][1] : 0;
-  a4=arg[3]? arg[3][0] : 0;
-  a4=(a3-a4);
-  a5=casadi_sq(a4);
-  a5=(a2*a5);
+  a2=arg[0]? arg[0][1] : 0;
+  a3=arg[3]? arg[3][0] : 0;
+  a3=(a2-a3);
+  a4=casadi_sq(a3);
+  a1=(a1+a4);
+  a4=20.;
+  a5=arg[3]? arg[3][1] : 0;
+  a2=(a2-a5);
+  a5=casadi_sq(a2);
+  a5=(a4*a5);
   a1=(a1+a5);
-  a5=20.;
-  a6=arg[3]? arg[3][1] : 0;
-  a3=(a3-a6);
-  a6=casadi_sq(a3);
-  a6=(a5*a6);
-  a1=(a1+a6);
   if (res[0]!=0) res[0][0]=a1;
   a0=(a0+a0);
   if (res[1]!=0) res[1][0]=a0;
   a0=0.;
   if (res[1]!=0) res[1][1]=a0;
+  a2=(a2+a2);
+  a4=(a4*a2);
   a3=(a3+a3);
-  a5=(a5*a3);
-  a4=(a4+a4);
-  a2=(a2*a4);
-  a5=(a5+a2);
-  if (res[1]!=0) res[1][2]=a5;
+  a4=(a4+a3);
+  if (res[1]!=0) res[1][2]=a4;
   return 0;
 }
 

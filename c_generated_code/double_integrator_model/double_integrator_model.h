@@ -61,6 +61,12 @@ const int *double_integrator_expl_vde_adj_sparsity_in(int);
 const int *double_integrator_expl_vde_adj_sparsity_out(int);
 int double_integrator_expl_vde_adj_n_in(void);
 int double_integrator_expl_vde_adj_n_out(void);
+int double_integrator_expl_ode_hess(const real_t** arg, real_t** res, int* iw, real_t* w, void *mem);
+int double_integrator_expl_ode_hess_work(int *, int *, int *, int *);
+const int *double_integrator_expl_ode_hess_sparsity_in(int);
+const int *double_integrator_expl_ode_hess_sparsity_out(int);
+int double_integrator_expl_ode_hess_n_in(void);
+int double_integrator_expl_ode_hess_n_out(void);
 
 
 

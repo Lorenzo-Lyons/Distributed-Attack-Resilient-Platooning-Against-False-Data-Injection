@@ -264,11 +264,12 @@ plot(R,[1,2],'DisplayName','Reachable set','FaceAlpha',0.2)
 
 % simulate trajectory
 % Define simulation parameters
-t_sim = 25;                % total simulation time [s]
+t_sim = 21;                % total simulation time [s]
 dt_sim = Dt;               % time step [s]
 F_sim = F;                 % system matrix
 G_sim = G;                 % input matrix
-t_emergency_brake = 10;
+t_emergency_brake = 11;
+t_attack = 1;
 
 
 % Initial state: [d1_tilde; d2_tilde; v0_tilde; v1_tilde; v2_tilde]
@@ -291,7 +292,12 @@ for run_idx = 1:sim_runs
 
     for i = 2:sim_steps
         % Define control input 
-        u_cacc = [Lb1; u_max_actuators; u_max_actuators];
+        if i * dt_sim > t_attack
+            u_cacc = [Lb1; u_max_actuators; u_max_actuators];
+        else
+            u_cacc = [0; 0; 0];
+        end
+
 
         % State update
         x_history(:, i) = F_sim * x_history(:, i-1) + G_sim * u_cacc;
@@ -335,7 +341,8 @@ disp(Ub3_controlled);
 
 add_label = true;
 for run_idx = 1:sim_runs
-    x_history = simulate_trajecotry(sim_steps, F_sim, G_sim, x_0,dt_sim,t_emergency_brake,u_cacc,v_d,best_P);
+
+    x_history = simulate_trajecotry(sim_steps, F_sim, G_sim, x_0,dt_sim,t_attack,t_emergency_brake,u_cacc,v_d,best_P);
 
     % Plot 2D trajectory in d1-d2 space
     if add_label
@@ -372,7 +379,7 @@ grid on;
 
 
 
-function x_history = simulate_trajecotry(sim_steps, F_sim, G_sim, x_0,dt,t_emergency_brake,u_cacc,v_d,P)
+function x_history = simulate_trajecotry(sim_steps, F_sim, G_sim, x_0,dt,t_attack,t_emergency_brake,u_cacc_atk,v_d,P)
     v_max =  27.78;
 
 
@@ -385,13 +392,19 @@ function x_history = simulate_trajecotry(sim_steps, F_sim, G_sim, x_0,dt,t_emerg
     x_history(:, 1) = x_0;
 
     for i = 2:sim_steps
+        if i * dt > t_attack
+            u_cacc = u_cacc_atk;
+        else
+            u_cacc = [0; 0; 0];
+        end
+
+
         % State update
         candidate_new_x = F_sim * x_history(:, i-1) + G_sim * u_cacc;
 
         % Define control input (example: emergency brake)
         if i * dt > t_emergency_brake
             candidate_new_x(3) = x_history(3, i-1) -7.848 * dt; %maximum braking capacity
-        
         end
 
 

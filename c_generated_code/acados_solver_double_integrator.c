@@ -312,6 +312,10 @@ void double_integrator_acados_create_3_create_and_set_functions(double_integrato
     for (int i = 0; i < N; i++) {
         MAP_CASADI_FNC(expl_ode_fun[i], double_integrator_expl_ode_fun);
     }
+    capsule->hess_vde_casadi = (external_function_param_casadi *) malloc(sizeof(external_function_param_casadi)*N);
+    for (int i = 0; i < N; i++) {
+        MAP_CASADI_FNC(hess_vde_casadi[i], double_integrator_expl_ode_hess);
+    }
 
 
     // external cost
@@ -404,6 +408,7 @@ void double_integrator_acados_create_5_set_nlp_in(double_integrator_solver_capsu
     {
         ocp_nlp_dynamics_model_set(nlp_config, nlp_dims, nlp_in, i, "expl_vde_forw", &capsule->forw_vde_casadi[i]);
         ocp_nlp_dynamics_model_set(nlp_config, nlp_dims, nlp_in, i, "expl_ode_fun", &capsule->expl_ode_fun[i]);
+        ocp_nlp_dynamics_model_set(nlp_config, nlp_dims, nlp_in, i, "expl_ode_hess", &capsule->hess_vde_casadi[i]);
     
     }
 
@@ -459,7 +464,7 @@ void double_integrator_acados_create_5_set_nlp_in(double_integrator_solver_capsu
     double* ubu = lubu + NBU;
     
     lbu[0] = -7.848000000000001;
-    ubu[0] = 4.905;
+    ubu[0] = 7.848000000000001;
 
     for (int i = 0; i < N; i++)
     {
@@ -535,6 +540,17 @@ void double_integrator_acados_create_6_set_opts(double_integrator_solver_capsule
     ************************************************/
 
 
+    int nlp_solver_exact_hessian = 1;
+    ocp_nlp_solver_opts_set(nlp_config, nlp_opts, "exact_hess", &nlp_solver_exact_hessian);
+
+    int exact_hess_dyn = 1;
+    ocp_nlp_solver_opts_set(nlp_config, nlp_opts, "exact_hess_dyn", &exact_hess_dyn);
+
+    int exact_hess_cost = 1;
+    ocp_nlp_solver_opts_set(nlp_config, nlp_opts, "exact_hess_cost", &exact_hess_cost);
+
+    int exact_hess_constr = 1;
+    ocp_nlp_solver_opts_set(nlp_config, nlp_opts, "exact_hess_constr", &exact_hess_constr);
     ocp_nlp_solver_opts_set(nlp_config, nlp_opts, "globalization", "fixed_step");int full_step_dual = 0;
     ocp_nlp_solver_opts_set(nlp_config, capsule->nlp_opts, "full_step_dual", &full_step_dual);
 
@@ -780,6 +796,7 @@ int double_integrator_acados_update_params(double_integrator_solver_capsule* cap
     {
         capsule->forw_vde_casadi[stage].set_param(capsule->forw_vde_casadi+stage, p);
         capsule->expl_ode_fun[stage].set_param(capsule->expl_ode_fun+stage, p);
+        capsule->hess_vde_casadi[stage].set_param(capsule->hess_vde_casadi+stage, p);
     
 
         // constraints
@@ -841,6 +858,7 @@ int double_integrator_acados_update_params_sparse(double_integrator_solver_capsu
     {
         capsule->forw_vde_casadi[stage].set_param_sparse(capsule->forw_vde_casadi+stage, n_update, idx, p);
         capsule->expl_ode_fun[stage].set_param_sparse(capsule->expl_ode_fun+stage, n_update, idx, p);
+        capsule->hess_vde_casadi[stage].set_param_sparse(capsule->hess_vde_casadi+stage, n_update, idx, p);
     
 
         // constraints
@@ -907,9 +925,11 @@ int double_integrator_acados_free(double_integrator_solver_capsule* capsule)
     {
         external_function_param_casadi_free(&capsule->forw_vde_casadi[i]);
         external_function_param_casadi_free(&capsule->expl_ode_fun[i]);
+        external_function_param_casadi_free(&capsule->hess_vde_casadi[i]);
     }
     free(capsule->forw_vde_casadi);
     free(capsule->expl_ode_fun);
+    free(capsule->hess_vde_casadi);
 
     // cost
     external_function_param_casadi_free(&capsule->ext_cost_0_fun);

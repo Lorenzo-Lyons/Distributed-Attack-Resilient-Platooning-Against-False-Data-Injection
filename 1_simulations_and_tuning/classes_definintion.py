@@ -91,7 +91,7 @@ class DMPC():
 
         # 1. Set cost function
         qu = 1  # Control weight
-        qx = 1.6 # 1.6 for immediate crash in FDI  10 for crash during emergency brake
+        qx = 1 #1 #1.6 # 1.6 for immediate crash in FDI  10 for crash during emergency brake
 
         qx_assumed = 20
         qx_final = 10000 # this needs to be very high because it should really be a hard constraint in theory
@@ -119,7 +119,7 @@ class DMPC():
 
         ocp.constraints.constr_type = 'BGH'
         ocp.constraints.lbu = np.array([u_min])
-        ocp.constraints.ubu = np.array([u_max])
+        ocp.constraints.ubu = np.array([-u_min])  # this should really be u_max, but to have the same attack as in other cases we set it to -u_min
         ocp.constraints.idxbu = np.array([0])
 
         # # Enforce terminal control action to be zero at the last stage
@@ -131,7 +131,7 @@ class DMPC():
 
         # 3. Set solver options
         ocp.solver_options.qp_solver = 'FULL_CONDENSING_QPOASES'
-        ocp.solver_options.hessian_approx = 'GAUSS_NEWTON' # EXACT   may fix the warning
+        ocp.solver_options.hessian_approx = 'EXACT' # EXACT   may fix the warning
         ocp.solver_options.integrator_type = 'ERK'
         ocp.solver_options.nlp_solver_type = 'SQP'
         ocp.solver_options.tf = Tf
@@ -167,13 +167,6 @@ class DMPC():
             x_assumed_open_loop[k] = x_assumed_self
         
 
-        for k in range(N):
-            if k < N-1:
-                solver.set(k, "lbu", np.array([u_min]))  # Lower bound on u at stage
-                solver.set(k, "ubu", np.array([u_max]))  # Upper bound on u at stage
-            else: # set terminal constraints on control input
-                solver.set(k, "lbu", np.array([0.0]))  # Lower bound on u at terminal stage
-                solver.set(k, "ubu", np.array([0.0]))  # Upper bound on u at terminal stage
 
 
         # set initial condition
@@ -464,11 +457,11 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         use_ff = True
 
         # leader acceleration function
-        time_to_brake = 10
+        time_to_brake = 11
         leader_acc_fun = lambda t0, t_stage: 0 if t0 < time_to_brake  else u_min 
 
         # attack function
-        time_to_attack = 0
+        time_to_attack = 1
         attack_function = lambda t0,u_i: u_max if t0 > time_to_attack  else leader_acc_fun(t0,0) # extremely high value for attack
 
         #use MPC?
@@ -548,11 +541,11 @@ def set_scenario_parameters(scenario,d,v_d,c,k,h,v_max,u_min,u_max):
         use_ff = True
 
         # leader acceleration function
-        time_to_brake = 10 
+        time_to_brake = 11
         leader_acc_fun = lambda t0, t_stage: 0 if t0 < time_to_brake  else u_min
 
         # attack function
-        time_to_attack = 0
+        time_to_attack = 1
         attack_function = lambda t: u_max
         #attack_function = lambda t: u_max*0.1 
 

@@ -29,7 +29,7 @@ rc('font', **font)
 
 
 dt_int = 0.15 #[s]
-simulation_time = 30
+simulation_time = 21
 
 
 
@@ -43,13 +43,13 @@ simulation_time = 30
 
 
 # #our method with FDI attack and emergency brake
-# scenario = 7
-# dt_int = 0.05 #[s] # must increase resolution
+scenario = 7
+dt_int = 0.05 #[s] # must increase resolution
 
 
 # DMPC with FDI attack and emergency brake
-scenario = 10
-dt_int = 0.05
+# scenario = 10
+# dt_int = 0.05
 
 # # Baseline linear controller with emergency brake
 # scenario = 14
@@ -74,7 +74,6 @@ v_d = platooning_problem_parameters_obj.v_d
 u_min = platooning_problem_parameters_obj.u_min  
 u_max = platooning_problem_parameters_obj.u_max 
 v_max = platooning_problem_parameters_obj.v_max 
-
 
 # load gains from previously saved values from "linear_controller_gains.py"
 params = np.load('saved_linear_controller_gains.npy')
@@ -245,34 +244,7 @@ if use_MPC:
     # create reference for the leader to track
     v_leader_reference = np.zeros((sim_steps,MPC_N+1))
     x_leader_reference = np.zeros((sim_steps,MPC_N+1))
-
     u_open_loop_first_follower = np.zeros((sim_steps,MPC_N))
-
-
-    for t0 in range(0,sim_steps):
-        if t0==0:
-            # assign initial state
-            v_leader_reference[t0,0] = vehicle_vec[0].v
-            x_leader_reference[t0,0] = vehicle_vec[0].x
-        else:
-            v_leader_reference[t0,0] = v_leader_reference[t0-1,1]
-            x_leader_reference[t0,0] = x_leader_reference[t0-1,1]
-
-        for stage in range(1,MPC_N+1):
-            u_leader_reference = leader_acc_fun(t0*dt_int, (t0 + stage)*dt_int) # pass in both current time and open loop time
-            v_ref_candidate = v_leader_reference[t0,stage-1] + u_leader_reference * dt_int
-
-            if v_ref_candidate > v_max:
-                v_leader_reference[t0,stage] = v_max
-            elif v_ref_candidate < 0:
-                v_leader_reference[t0,stage] = 0
-            else:
-                v_leader_reference[t0,stage] = v_ref_candidate
-
-            x_leader_reference[t0,stage] = x_leader_reference[t0,stage-1] + v_leader_reference[t0,stage-1] * dt_int
-
-
-
 
 
 
@@ -323,8 +295,8 @@ for t in tqdm(range(sim_steps), desc ="Simulation progress"):
     # -- leader --
     # store leader acceleration for plots
     if use_MPC == False:
-        if scenario == 7 and t*dt_int < time_to_brake:
-            vehicle_vec[0].u = u_min - k*h*(vehicle_vec[kk].v-v_d) - c*(vehicle_vec[kk].v-v_d)
+        if scenario == 7 and t*dt_int < time_to_brake and t*dt_int > time_to_attack:
+             vehicle_vec[0].u = u_min - k*h*(vehicle_vec[0].v-v_d) - c*(vehicle_vec[0].v-v_d)
         else:
             vehicle_vec[0].u = leader_acc_fun(t*dt_int,0)
 
@@ -338,6 +310,34 @@ for t in tqdm(range(sim_steps), desc ="Simulation progress"):
 
     # produce leader open loop prediction if using MPC
     else: # use MPC
+
+
+        if t*dt_int < time_to_brake:
+            v_leader_reference[t,:] = v_d
+            x_leader_reference[t,:] = v_d * dt_int * np.arange(0,MPC_N+1) + vehicle_vec[0].x # +  x_0_opne_loop
+        else:
+            # produce reference trajectory coherent with braking at max deceleration
+            v_leader_reference[t,0] = vehicle_vec[0].v
+            x_leader_reference[t,0] = vehicle_vec[0].x
+            for stage in range(1,MPC_N+1):
+                t_open_loop = t + stage # evaluate open loop time
+                u_leader_reference = leader_acc_fun(t*dt_int, (t_open_loop)*dt_int) # pass in both current time and open loop time
+
+                v_ref_candidate = v_leader_reference[t,stage-1] + u_leader_reference * dt_int
+
+                if v_ref_candidate > v_max:
+                    v_leader_reference[t,stage] = v_max
+                elif v_ref_candidate < 0:
+                    v_leader_reference[t,stage] = 0
+                else:
+                    v_leader_reference[t,stage] = v_ref_candidate
+
+                x_leader_reference[t,stage] = x_leader_reference[t,stage-1] + v_leader_reference[t,stage-1] * dt_int
+
+
+
+
+
         # compute reference trajectory and assumed trajectory
         # compute first iteration assumed trajectory
         v_open_loop_0 = np.ones(MPC_N+1) * vehicle_vec[0].v
@@ -351,7 +351,6 @@ for t in tqdm(range(sim_steps), desc ="Simulation progress"):
         x_current = np.array([vehicle_vec[0].v, vehicle_vec[0].x])
 
 
-        
 
 
         # set up solver for current iteration
@@ -382,12 +381,13 @@ for t in tqdm(range(sim_steps), desc ="Simulation progress"):
         vehicle_vec[0].x_open_loop = x_open_loop_leader
 
         # assign control input to leader
-        if scenario == 10 and t*dt_int > time_to_attack:
+        if scenario == 10 and t*dt_int > time_to_attack and t*dt_int < time_to_brake:
              vehicle_vec[0].u = u_open_loop_leader[0] + u_min
         else:
             vehicle_vec[0].u = u_open_loop_leader[0]
+
         u_vector_leader[t] = vehicle_vec[0].u
-            
+
 
 
     # -- other vehicles --
@@ -541,6 +541,36 @@ for t in tqdm(range(sim_steps), desc ="Simulation progress"):
 
 
     
+
+# save simualtion results
+x_sim = np.zeros((sim_steps,n_follower_vehicles+1))
+v_sim = np.zeros((sim_steps,n_follower_vehicles+1))
+u_sim = np.zeros((sim_steps,n_follower_vehicles+1))
+
+for kk in range(n_follower_vehicles+1):
+    v_sim[:,kk] = vehicle_states[kk][:,3]
+    x_sim[:,kk] = vehicle_states[kk][:,4]
+    u_sim[:,kk] = u_total_followers[:,kk-1] if kk > 0 else u_vector_leader
+
+# time vector
+time_vec = np.arange(0,simulation_time,dt_int)
+
+# save the simulation results
+if scenario == 10:
+    sim_name = 'DMPC_N'+str(MPC_N)
+elif scenario == 7:
+    sim_name = 'our_method'
+
+import os
+# set current directory as folder where the script is located
+script_dir = os.path.dirname(os.path.abspath(__file__))
+os.chdir(script_dir)
+
+
+np.save(os.path.join('simulation_data', sim_name, 'x_sim.npy'), x_sim)
+np.save(os.path.join('simulation_data', sim_name, 'v_sim.npy'), v_sim)
+np.save(os.path.join('simulation_data', sim_name, 'u_sim.npy'), u_sim)
+np.save(os.path.join('simulation_data', sim_name, 'time_vec.npy'), time_vec)
 
 
 
@@ -824,6 +854,7 @@ ax_u.set_title('Acceleration')
 
 
 plt.show()
+
 
 
 
