@@ -28,10 +28,10 @@ rc('font', **font)
 
 
 
-dt_int = 0.15 #[s]
+dt_int = 0.05 #[s]
 simulation_time = 21
 
-
+save_data = False
 
 
 # our method with sinusoidal reference
@@ -44,12 +44,10 @@ simulation_time = 21
 
 # #our method with FDI attack and emergency brake
 scenario = 7
-dt_int = 0.05 #[s] # must increase resolution
 
 
 # DMPC with FDI attack and emergency brake
 # scenario = 10
-# dt_int = 0.05
 
 # # Baseline linear controller with emergency brake
 # scenario = 14
@@ -556,21 +554,23 @@ for kk in range(n_follower_vehicles+1):
 time_vec = np.arange(0,simulation_time,dt_int)
 
 # save the simulation results
-if scenario == 10:
-    sim_name = 'DMPC_N'+str(MPC_N)
+if scenario == 10 and MPC_N==40:
+    sim_name = '1DMPC N=40'
+elif scenario == 10 and MPC_N==20:
+    sim_name = '2DMPC N=20'
 elif scenario == 7:
-    sim_name = 'our_method'
+    sim_name = '4ACC + CACC'
 
 import os
 # set current directory as folder where the script is located
 script_dir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(script_dir)
 
-
-np.save(os.path.join('simulation_data', sim_name, 'x_sim.npy'), x_sim)
-np.save(os.path.join('simulation_data', sim_name, 'v_sim.npy'), v_sim)
-np.save(os.path.join('simulation_data', sim_name, 'u_sim.npy'), u_sim)
-np.save(os.path.join('simulation_data', sim_name, 'time_vec.npy'), time_vec)
+if save_data:
+    np.save(os.path.join('simulation_data', sim_name, 'x_sim.npy'), x_sim)
+    np.save(os.path.join('simulation_data', sim_name, 'v_sim.npy'), v_sim)
+    np.save(os.path.join('simulation_data', sim_name, 'u_sim.npy'), u_sim)
+    np.save(os.path.join('simulation_data', sim_name, 'time_vec.npy'), time_vec)
 
 
 
