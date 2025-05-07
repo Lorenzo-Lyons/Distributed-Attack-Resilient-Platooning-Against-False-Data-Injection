@@ -342,7 +342,7 @@ disp(Ub3_controlled);
 add_label = true;
 for run_idx = 1:sim_runs
 
-    x_history = simulate_trajecotry(sim_steps, F_sim, G_sim, x_0,dt_sim,t_attack,t_emergency_brake,u_cacc,v_d,best_P);
+    [x_history,x_leader_history] = simulate_trajecotry(sim_steps, F_sim, G_sim, x_0,dt_sim,t_attack,t_emergency_brake,u_cacc,v_d,best_P);
 
     % Plot 2D trajectory in d1-d2 space
     if add_label
@@ -376,16 +376,49 @@ grid on;
 
 
 
+% save data for comparison figure
+% Load Python's numpy module
+np = py.importlib.import_module('numpy');
 
 
 
-function x_history = simulate_trajecotry(sim_steps, F_sim, G_sim, x_0,dt,t_attack,t_emergency_brake,u_cacc_atk,v_d,P)
+
+% Save to .npy format using numpy
+folder = 'simulation_data/Kafash/';
+% produce matrices
+
+v_sim = transpose(x_history(3:5,:)+v_d);
+d = 6;
+x_hist_1 = x_history(1,:) - d + x_leader_history;
+x_hist_2 = x_hist_1 - d;
+x_sim = transpose([x_leader_history; ...
+                   x_hist_1; ...
+                   x_hist_2]);
+% repeat last value for dimension consistency in python
+time = time(1:end-1);
+
+np.save('simulation_data/Kafash/x_sim.npy', py.numpy.array(x_sim))
+np.save('simulation_data/Kafash/v_sim.npy', py.numpy.array(v_sim))
+np.save('simulation_data/Kafash/time_vec.npy', py.numpy.array(time))
+
+
+
+
+
+
+
+
+
+
+
+function [x_history,x_leader_history] = simulate_trajecotry(sim_steps, F_sim, G_sim, x_0,dt,t_attack,t_emergency_brake,u_cacc_atk,v_d,P)
     v_max =  27.78;
 
 
     % Preallocate state and input histories
     x_history = zeros(length(x_0), sim_steps);
     u_history = zeros(3, sim_steps);
+    x_leader_history = zeros(1,sim_steps);
     ellipse_val = zeros(1, sim_steps);
 
     % Assign initial condition
@@ -426,6 +459,7 @@ function x_history = simulate_trajecotry(sim_steps, F_sim, G_sim, x_0,dt,t_attac
         end
 
         x_history(:, i) = candidate_new_x;
+        x_leader_history(i) = x_leader_history(i-1) + (candidate_new_x(3)+v_d) * dt;
 
         % Store control input
         u_history(:, i) = u_cacc;

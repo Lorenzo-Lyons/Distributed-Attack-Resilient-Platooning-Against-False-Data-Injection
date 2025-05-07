@@ -4,6 +4,13 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from classes_definintion import platooning_problem_parameters,Vehicle_model,set_scenario_parameters,generate_color_gradient,generate_color_1st_last_gray
 from tqdm import tqdm
 
+from matplotlib import rc
+font = {'family' : 'serif',
+        #'serif': ['Times New Roman'],
+        'size'   : 16}
+
+rc('font', **font)
+
 
 # load platooning parameters from class
 platooning_problem_parameters_obj = platooning_problem_parameters(False) # leave value to False to simulate on full scale vehicles
@@ -25,10 +32,14 @@ d = params[3]
 
 
 
-leader_color = "#ea7317"
-color_1 = "#57b8ff"
-color_2 = "#3d348b"
-colors = [leader_color,color_1,color_2] 
+our_method_color = "#00A6D6"
+DMPC_20_color = "#6CC24A"
+DMPC_40_color = "#009B77"
+Kafash_color = "#6F1D77"
+
+methods_colors = [DMPC_40_color,DMPC_20_color,Kafash_color,our_method_color]
+
+#colors = [leader_color,color_1,color_2] 
 
 
 
@@ -39,10 +50,22 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(script_dir)
 
 # get list of all folders in the folder "simualtion_data"
-import os
+import re
 
+# Path to simulation_data directory
 simulation_data_dir = os.path.join(script_dir, 'simulation_data')
-folders = [f for f in os.listdir(simulation_data_dir) if os.path.isdir(os.path.join(simulation_data_dir, f))]
+
+# List only folders
+folders = [f for f in os.listdir(simulation_data_dir)
+           if os.path.isdir(os.path.join(simulation_data_dir, f))]
+
+# Extract leading number and sort
+sorted_folders = sorted(folders, key=lambda name: int(re.match(r'^\d+', name).group()))
+
+# Remove the leading number and return cleaned names
+cleaned_folders = [re.sub(r'^\d+', '', name).lstrip() for name in sorted_folders]
+
+
 
 
 
@@ -69,7 +92,7 @@ for folder in folders:
             globals()[var_name] = np.load(file_path)
 
     for i in range(v_sim.shape[1]):
-        plt.plot(time_vec,v_sim[:-1,i],label='vehicle ' + str(int(i)), color=colors[i]) 
+        plt.plot(time_vec,v_sim[:-1,i],label='vehicle ' + str(int(i)), color=methods_colors[i]) 
 
 
 plt.plot(time_vec,np.ones(len(time_vec))*v_d,linestyle='--',color='gray',label='v_d')
@@ -88,33 +111,27 @@ time_to_brake = 11
 
 
 
-fig_pos, ax_pos = plt.subplots(nrows=1, ncols=1, figsize=(16, 3.1))
+fig_pos, ax_pos = plt.subplots(nrows=1, ncols=2, figsize=(16, 3.1))
 fig_pos.subplots_adjust(
 top=0.98,
-bottom=0.235,
-left=0.055,
-right=0.76,
-hspace=0.2,
-wspace=0.2
+bottom=0.2,
+left=0.045,
+right=0.81,
+hspace=0.18,
+wspace=0.135
 )
 
-y_lims = [-d-1,2]
+
+
+
+
+y_lims = [-d-1,2.5]
 x_lims = [0,time_vec[-1]]
 
 
-ax_pos.plot(time_vec,np.ones(len(time_vec))*-d,linestyle='--',color='gray',label='d',zorder=20,linewidth=3,alpha = 0.5)
 
-# add collision zone box
-ax_pos.plot(time_vec,np.zeros(len(time_vec)),linestyle='-',color="#a40606",linewidth=3)
-ax_pos.fill_between(time_vec, y1=0, y2=y_lims[1], color='#a40606', alpha=0.3, label='collision')
-
-ax_pos.axvline(x=time_to_attack, color='orange', linestyle='--',label='FDI attack',linewidth=3)
-ax_pos.axvline(x=time_to_brake, color='orangered', linestyle='--',label='emergency brake',linewidth=3)
-
-
-
-
-for folder in folders:
+# Assume 'folders' is already sorted and cleaned
+for i, folder in enumerate(sorted_folders):
     folder_path = os.path.join(simulation_data_dir, folder)
     files = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
 
@@ -124,19 +141,44 @@ for folder in folders:
             file_path = os.path.join(folder_path, file)
             globals()[var_name] = np.load(file_path)
 
-    ax_pos.plot(time_vec,x_sim[:-1,1] - x_sim[:-1,0],linewidth=3,label = folder) #'x_rel ' + str(int(kk+1))
+    # Format label: bold if last folder
+    if i == len(folders) - 1:
+        label = r'$\mathbf{' + cleaned_folders[i] + '}$'
+        linewidth = 3
+    else:
+        label = cleaned_folders[i]
+        linewidth = 2
+
+    ax_pos[0].plot(time_vec, x_sim[:-1, 1] - x_sim[:-1, 0], linewidth=linewidth, label=label,color = methods_colors[i],zorder=20)
+    ax_pos[1].plot(time_vec, x_sim[:-1, 2] - x_sim[:-1, 1], linewidth=linewidth, label=label,color = methods_colors[i],zorder=20)
 
 
+ax_pos[0].plot(time_vec,np.ones(len(time_vec))*-d,linestyle='--',color='gray',label='d',linewidth=2,alpha = 0.5)
+ax_pos[0].fill_between(time_vec, y1=0, y2=y_lims[1], color='#EC6842', alpha=0.3, label='collision')
+ax_pos[0].axvline(x=time_to_attack, color='orange', linestyle='--',label='FDI attack',linewidth=2)
+ax_pos[0].axvline(x=time_to_brake, color='orangered', linestyle='--',label='emergency brake',linewidth=2)
 
+ax_pos[1].plot(time_vec,np.ones(len(time_vec))*-d,linestyle='--',color='gray',label='d',linewidth=2,alpha = 0.5)
+ax_pos[1].fill_between(time_vec, y1=0, y2=y_lims[1], color='#EC6842', alpha=0.3, label='collision')
+ax_pos[1].axvline(x=time_to_attack, color='orange', linestyle='--',label='FDI attack',linewidth=2)
+ax_pos[1].axvline(x=time_to_brake, color='orangered', linestyle='--',label='emergency brake',linewidth=2)
 
-ax_pos.legend(bbox_to_anchor=(1.01, 1.05))
+ax_pos[0].set_ylim(y_lims)
+ax_pos[0].set_xlim(x_lims)
+ax_pos[0].set_yticks([0, -3, -6])
+ax_pos[0].set_yticklabels(['0', '3', '6'])  # Remove minus signs from labels
+ax_pos[0].set_xlabel('time [s]')
+ax_pos[0].set_ylabel(r'$d_1$ [m]')
 
-ax_pos.set_ylim(y_lims)
-ax_pos.set_xlim(x_lims)
-ax_pos.set_yticks([0,-3,-6])
-ax_pos.set_xlabel('time [s]')
-ax_pos.set_ylabel(r'$x_1 - x_0$ [m]')
-#ax_pos.set_title('Relative position')
+ax_pos[1].set_ylim(y_lims)
+ax_pos[1].set_xlim(x_lims)
+ax_pos[1].set_yticks([0, -3, -6])
+ax_pos[1].set_yticklabels(['0', '3', '6'])  # Remove minus signs from labels
+ax_pos[1].set_xlabel('time [s]')
+ax_pos[1].set_ylabel(r'$d_2$ [m]')
+
+ax_pos[1].legend(bbox_to_anchor=(1.01, 1.05))
+
 
 
 plt.show()
