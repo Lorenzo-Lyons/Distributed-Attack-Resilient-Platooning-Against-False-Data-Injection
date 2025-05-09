@@ -1,7 +1,7 @@
 {
     "acados_include_path": "/home/lorenzo/OneDrive/PhD/Code/acados/include",
     "acados_lib_path": "/home/lorenzo/OneDrive/PhD/Code/acados/lib",
-    "code_export_directory": "/home/lorenzo/OneDrive/PhD/Code/Distributed-Attack-Resilient-Platooning-Against-False-Data-Injection/c_generated_code",
+    "code_export_directory": "/home/lorenzo/OneDrive/PhD/Code/Distributed-Attack-Resilient-Platooning-Against-False-Data-Injection/1_simulations_and_tuning/c_generated_code",
     "constraints": {
         "C": [],
         "C_e": [],
@@ -160,7 +160,7 @@
         "ny_e": 0,
         "nz": 0
     },
-    "json_file": "1_simulations_and_tuning/acados_ocp_platooning.json",
+    "json_file": "acados_ocp_platooning.json",
     "model": {
         "con_h_expr": null,
         "con_h_expr_e": null,

@@ -69,7 +69,7 @@ class DMPC():
         from acados_template import AcadosOcp, AcadosOcpSolver
         import os
 
-        solver_file = "1_simulations_and_tuning/acados_ocp_platooning.json"
+        solver_file = "acados_ocp_platooning.json"
 
         # Create ocp object
         ocp = AcadosOcp()
