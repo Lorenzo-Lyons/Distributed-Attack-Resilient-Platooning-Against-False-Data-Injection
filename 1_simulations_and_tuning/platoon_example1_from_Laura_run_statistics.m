@@ -11,7 +11,10 @@ kd = 0.3;    % derivative gain of the forward-and-reverse-looking PD control
 % x+ = Fx+Gw, where x is the new state in the error dynamics and w is the
 % secondary control action 
 
-n_follower_vehicles = 2;
+
+
+
+n_follower_vehicles = 10;
 
 
 % F = [1  0 -Dt           Dt           0;
@@ -81,7 +84,9 @@ end
 
 
 
-
+final_distance = -beta * v_d / kp;
+disp('final distance last car =')
+disp(final_distance)
 
 
 
@@ -102,8 +107,14 @@ obj_vals = [];
 % optimal a values
 % n_follower_vehicles = 2  --> a = 0.888
 % n_follower_vehicles = 10 --> a = 0.955
+if n_follower_vehicles == 10
+    a_vec = [0.955];  
+elseif n_follower_vehicles == 2
+    a_vec = [0.888];
+end
 
-for a = [0.888] %linspace(0.95,0.99,20) % [0.955] %[0.888] % [0.955] %linspace(0.93,0.99,20) %0.88:0.01:0.90   [0.888] % 
+
+for a = a_vec %linspace(0.95,0.99,20) % [0.955] %[0.888] % [0.955] %linspace(0.93,0.99,20) %0.88:0.01:0.90   [0.888] % 
     fprintf('Solving for a = %.2f\n', a);
 
     cvx_begin SDP
@@ -252,7 +263,7 @@ dt_sim = Dt;               % time step [s]
 F_sim = F;                 % system matrix
 G_sim = G;                 % input matrix
 t_emergency_brake = t_sim-extra_braking_time;
-t_attack = 300;
+t_attack = 0;
 
 
 % Initial state: [d1_tilde; d2_tilde; v0_tilde; v1_tilde; v2_tilde]
@@ -260,7 +271,7 @@ x_0 = zeros(1,n);     % column vector
 
 
 
-sim_runs = 1;
+sim_runs = 1000;
 sim_steps = round(t_sim / dt_sim);
 
 % Time vector
@@ -357,7 +368,7 @@ for s = 0:sim_runs-1
     x_sim = zeros(n_follower_vehicles+1,sim_steps);
     x_sim(1,:) = x_leader_history;
 
-    for nn = 2:n_follower_vehicles
+    for nn = 2:n_follower_vehicles+1
         x_sim(nn,:) = x_history(nn-1,:) - d + x_sim(nn-1,:);
     end
 
@@ -414,9 +425,9 @@ colors = lines(num_states);  % Generate distinct colors automatically
 hold on;
 for i = start_idx:num_states
     if i == start_idx
-    plot(time, x_history(i, :) + v_d, '--', 'Color', colors(i, :), 'LineWidth', 1.5);    
+    plot(time, x_history(i, :), '--', 'Color', colors(i, :), 'LineWidth', 1.5);    
     else
-    plot(time, x_history(i, :) + v_d, 'Color', colors(i, :), 'LineWidth', 1.5);
+    plot(time, x_history(i, :), 'Color', colors(i, :), 'LineWidth', 1.5);
     end
 end
 hold off;
@@ -436,9 +447,9 @@ grid on;
 figure(11); clf;
 
 % Number of states to plot
-colors = lines(num_states);  % Generate distinct colors automatically
 
 hold on;
+plot(time, d * ones(1, length(time)), '--', 'Color', [0.5, 0.5, 0.5], 'LineWidth', 1.5);
 for i = 1:n_follower_vehicles
     
     if i == 1
@@ -447,7 +458,6 @@ for i = 1:n_follower_vehicles
     plot(time, x_history(i, :), 'Color', colors(i, :), 'LineWidth', 1.5);
     end
 end
-plot(time, d * ones(1, length(time)), '--', 'Color', [0.5, 0.5, 0.5], 'LineWidth', 1.5);
 hold off;
 
 xlabel('Time Step');
@@ -555,6 +565,13 @@ function [x_history,x_leader_history] = simulate_trajecotry(sim_steps, F_sim, G_
 
 
         % State update
+%         disp('x')
+%         disp(x_history(:, t-1))
+%         disp('F * x')
+%         temp  = F_sim * x_history(:, t-1);
+%         disp(temp)
+%         disp('F * x (first follower)')
+%         disp(temp(2))
         candidate_new_x = F_sim * x_history(:, t-1) + G_sim * u_cacc;
 
         % Define control input (example: emergency brake)

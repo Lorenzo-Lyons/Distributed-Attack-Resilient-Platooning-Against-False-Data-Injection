@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 
 
-sim_runs = 900
+sim_runs = 100
 
 
 #our method with FDI attack and emergency brake
@@ -16,7 +16,7 @@ sim_runs = 900
 # DMPC with FDI attack and emergency brake
 scenario = 10
 #MPC_N = 20  # Number of steps in the horizon
-MPC_N = 20  # Number of steps in the horizon
+MPC_N = 40  # Number of steps in the horizon
 
 
 dt_int = 0.05 #[s]
