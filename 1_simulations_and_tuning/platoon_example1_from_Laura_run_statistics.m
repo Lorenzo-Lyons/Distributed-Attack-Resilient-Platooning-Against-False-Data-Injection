@@ -562,23 +562,14 @@ function [x_history,x_leader_history] = simulate_trajecotry(sim_steps, F_sim, G_
         else
             u_cacc = zeros(m,1);
         end
-
-
-        % State update
-%         disp('x')
-%         disp(x_history(:, t-1))
-%         disp('F * x')
-%         temp  = F_sim * x_history(:, t-1);
-%         disp(temp)
-%         disp('F * x (first follower)')
-%         disp(temp(2))
+        
+        % state update
         candidate_new_x = F_sim * x_history(:, t-1) + G_sim * u_cacc;
 
         % Define control input (example: emergency brake)
         if t * dt > t_emergency_brake
             candidate_new_x(m) = x_history(m, t-1) + u_min * dt; %maximum braking capacity
         end
-
 
         % apply velocity constraints
         for jj = m:length(candidate_new_x)
@@ -589,7 +580,6 @@ function [x_history,x_leader_history] = simulate_trajecotry(sim_steps, F_sim, G_
                 candidate_new_x(jj) = v_max - v_d;
             end
         end
-
 
         x_history(:, t) = candidate_new_x;
         x_leader_history(t) = x_leader_history(t-1) + (candidate_new_x(m)+v_d) * dt;

@@ -5,7 +5,7 @@
 \multicolumn{1}{|l|}{DMPC N=40} & -9.00 & 6.57 & 17.07 & -45.20 & 93.25\% & 30.85\% \\ \hline
 \multicolumn{1}{|l|}{DMPC N=20} & -6.73 & 1.76 & 1.39 & -21.09 & 100.00\% & 67.21\% \\ \hline
 \multicolumn{1}{|l|}{Kafash et al.} & -6.03 & 1.09 & -1.19 & -10.55 & 100.00\% & 0.00\% \\ \hline
-\multicolumn{1}{|l|}{\textbf{ACC+CACC}} & -6.57 & 1.48 & -4.00 & -9.15 & 100.00\% & 100.00\% \\ \hline
+\multicolumn{1}{|l|}{\textbf{ACC+CACC}} & \textbf{-6.57} & \textbf{1.48} & \textbf{-4.00} & \textbf{-9.15} & \textbf{100.00\%} & \textbf{100.00\%} \\ \hline
 \end{tabular}
 \caption{}
 \label{tab:my-table}

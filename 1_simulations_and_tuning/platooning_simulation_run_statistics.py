@@ -346,23 +346,6 @@ for s in  tqdm( range(sim_runs), desc ="Simulation runs") :
         if use_MPC == False:
             if scenario == 7 and t*dt_int < time_to_brake and t*dt_int > time_to_attack:
                 feed_back_controller_leader = - k*h*(vehicle_vec[0].v-v_d) - c*(vehicle_vec[0].v-v_d)
-                # # attack signal
-                # u_atck_random = (1-alpha_filters[0]) * prev_atck_signal[0] + alpha_filters[0] * np.random.uniform(u_min,-u_min)
-                # prev_atck_signal[0] = u_atck_random # update previous attack signal
-                # if use_random_attack or use_constant_attack:
-                #     u_atck_leader =  u_atck_random
-                # else:
-                #     u_atck_leader = 0
-                
-                # if use_sinusoidal_attack:
-                #     u_atck_leader = u_atck_random + u_min * np.sin(initial_phases[0]+(t*dt_int)/frequencies[0]*np.pi*2)
-                
-                # # check if saturates
-                # if u_atck_leader > u_max:
-                #     u_atck_leader = u_max
-                # elif u_atck_leader < u_min:
-                #     u_atck_leader = u_min
-
 
                 candidate_u_leader = feed_back_controller_leader + u_atck_leader
 

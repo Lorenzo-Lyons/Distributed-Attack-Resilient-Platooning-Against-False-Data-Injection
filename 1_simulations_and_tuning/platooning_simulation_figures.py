@@ -113,10 +113,10 @@ time_to_brake = 11
 
 fig_pos, ax_pos = plt.subplots(nrows=1, ncols=2, figsize=(16, 3.1))
 fig_pos.subplots_adjust(
-top=0.98,
-bottom=0.2,
-left=0.045,
-right=0.81,
+top=1.0,
+bottom=0.195,
+left=0.035,
+right=0.815,
 hspace=0.18,
 wspace=0.135
 )
@@ -227,6 +227,8 @@ ax_u.set_xlabel('time [s]')
 ax_u.set_xlim([0,simulation_time])
 ax_u.legend(bbox_to_anchor=(1.01, 1.06))
 ax_u.set_title('Acceleration')
+
+
 
 
 

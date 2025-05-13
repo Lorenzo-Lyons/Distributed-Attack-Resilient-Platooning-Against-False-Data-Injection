@@ -59,8 +59,8 @@ def select_color(folder_name,methods_colors):
 
 
 
-sim_folder_name = 'simulation_data_statistics_constant_attack'
-#sim_folder_name = 'simulation_data_statistics_sinusoidal_attack'
+#sim_folder_name = 'simulation_data_statistics_constant_attack'
+sim_folder_name = 'simulation_data_statistics_sinusoidal_attack'
 #sim_folder_name = 'simulation_data_statistics_random_attack'
 
 
@@ -334,9 +334,9 @@ for sim_name in sorted_folders:
     #     plt.bar(bin_centers, hist_norm, width=(bins[1] - bins[0]), alpha=1/x_sim.shape[1], edgecolor='none', color=select_color(sim_name,methods_colors)) #, label=f'Car {i}'
 
 
-
+plt.axvline(x=0, color='red', linestyle='--',label='collision',linewidth=1)
 plt.xlabel('distance [m]')  # X-axis now represents distance
-plt.ylabel('Probability Density')  # Y-axis now represents a probability density
+plt.ylabel('probability density')  # Y-axis now represents a probability density
 plt.grid(False)
 
 # Optional: Add a legend to differentiate cars
@@ -347,9 +347,9 @@ xticks = np.arange(-20, 6, 5)
 # Set the tick labels with the opposite sign (convert negative values to positive)
 xtick_labels = [-tick for tick in xticks]
 # Apply boldface to the 0 label
-for i, label in enumerate(xtick_labels):
-    if label == 0:
-        xtick_labels[i] = r'$\mathbf{0}$'  # LaTeX formatting for boldface
+# for i, label in enumerate(xtick_labels):
+#     if label == 0:
+#         xtick_labels[i] = r'$\mathbf{0}$'  # LaTeX formatting for boldface
 
 # Apply the new tick labels
 plt.xticks(xticks, xtick_labels)
@@ -357,8 +357,8 @@ plt.xticks(xticks, xtick_labels)
 
 plt.xlim(-20, 5)
 
-
-
+figure_path = os.path.join(simulation_data_dir, 'comparison_constant_attack.pdf')
+plt.savefig(figure_path, format='pdf')
 
 
 
@@ -376,20 +376,54 @@ latex_table = r"""\begin{table}[]
                                         & \begin{tabular}[c]{@{}c@{}}mean\\dist.\\ {[}m{]}\end{tabular} & \begin{tabular}[c]{@{}c@{}}std.\\ dev.\\ {[}m{]}\end{tabular} & \begin{tabular}[c]{@{}c@{}}max\\dist.\\ {[}m{]}\end{tabular} & \begin{tabular}[c]{@{}c@{}}min\\dist.\\ {[}m{]}\end{tabular} & \begin{tabular}[c]{@{}c@{}}safe\\ runs\\ (attack)\end{tabular} & \begin{tabular}[c]{@{}c@{}}safe\\ runs\\ (brake)\end{tabular} \\ \hline
 """
 
+# # Add rows
+# for label in row_order:
+#     stats = statistics[label]
+#     # Bold the row for "ACC + CACC"
+#     row_name = r"\textbf{ACC+CACC}" if label == "ACC + CACC" else label
+#     row = (
+#         f"\multicolumn{{1}}{{|l|}}{{{row_name}}} & "
+#         f"{stats['mean']:.2f} & "
+#         f"{stats['std']:.2f} & "
+#         f"{stats['max']:.2f} & "
+#         f"{stats['min']:.2f} & "
+#         f"{stats['succes_rate_attack']:.2f}\% & "
+#         f"{stats['succes_rate']:.2f}\% \\\\ \\hline"
+#     )
+#     latex_table += row + "\n"
+
+# # Finish table
+# latex_table += r"""\end{tabular}
+# \caption{}
+# \label{tab:my-table}
+# \end{table}
+# """
+
+
+
+
+
 # Add rows
 for label in row_order:
     stats = statistics[label]
-    # Bold the row for "ACC + CACC"
-    row_name = r"\textbf{ACC+CACC}" if label == "ACC + CACC" else label
+
+    is_bold_row = label == "ACC + CACC"
+    row_name = r"\textbf{ACC+CACC}" if is_bold_row else label
+
+    def fmt(val, is_percent=False):
+        s = f"{val:.2f}\\%" if is_percent else f"{val:.2f}"
+        return rf"\textbf{{{s}}}" if is_bold_row else s
+
     row = (
         f"\multicolumn{{1}}{{|l|}}{{{row_name}}} & "
-        f"{stats['mean']:.2f} & "
-        f"{stats['std']:.2f} & "
-        f"{stats['max']:.2f} & "
-        f"{stats['min']:.2f} & "
-        f"{stats['succes_rate_attack']:.2f}\% & "
-        f"{stats['succes_rate']:.2f}\% \\\\ \\hline"
+        f"{fmt(stats['mean'])} & "
+        f"{fmt(stats['std'])} & "
+        f"{fmt(stats['max'])} & "
+        f"{fmt(stats['min'])} & "
+        f"{fmt(stats['succes_rate_attack'], is_percent=True)} & "
+        f"{fmt(stats['succes_rate'], is_percent=True)} \\\\ \\hline"
     )
+
     latex_table += row + "\n"
 
 # Finish table
@@ -398,6 +432,9 @@ latex_table += r"""\end{tabular}
 \label{tab:my-table}
 \end{table}
 """
+
+
+
 
 # Save to .txt file
 table_path = os.path.join(simulation_data_dir, 'latex_table_comparison.txt')  

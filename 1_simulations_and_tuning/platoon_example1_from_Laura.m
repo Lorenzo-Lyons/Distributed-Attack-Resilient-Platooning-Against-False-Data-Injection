@@ -389,17 +389,17 @@ folder = 'simulation_data/Kafash/';
 
 v_sim = transpose(x_history(3:5,:)+v_d);
 d = 6;
-x_hist_1 = x_history(1,:) - d + x_leader_history;
-x_hist_2 = x_hist_1 - d;
+x_hist_1 = x_history(1,:) + x_leader_history - d;
+x_hist_2 = x_history(2,:) + x_hist_1         - d;
 x_sim = transpose([x_leader_history; ...
                    x_hist_1; ...
                    x_hist_2]);
 % repeat last value for dimension consistency in python
 time = time(1:end-1);
 
-np.save('simulation_data/Kafash/x_sim.npy', py.numpy.array(x_sim))
-np.save('simulation_data/Kafash/v_sim.npy', py.numpy.array(v_sim))
-np.save('simulation_data/Kafash/time_vec.npy', py.numpy.array(time))
+np.save('simulation_data/3Kafash et al./x_sim.npy', py.numpy.array(x_sim))
+np.save('simulation_data/3Kafash et al./v_sim.npy', py.numpy.array(v_sim))
+np.save('simulation_data/3Kafash et al./time_vec.npy', py.numpy.array(time))
 
 
 
