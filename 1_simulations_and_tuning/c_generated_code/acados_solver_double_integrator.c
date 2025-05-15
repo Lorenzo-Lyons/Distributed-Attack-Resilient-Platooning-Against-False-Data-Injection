@@ -464,7 +464,7 @@ void double_integrator_acados_create_5_set_nlp_in(double_integrator_solver_capsu
     double* ubu = lubu + NBU;
     
     lbu[0] = -7.848000000000001;
-    ubu[0] = 7.848000000000001;
+    ubu[0] = 4.905;
 
     for (int i = 0; i < N; i++)
     {
@@ -614,7 +614,9 @@ void double_integrator_acados_create_6_set_opts(double_integrator_solver_capsule
     int qp_solver_iter_max = 50;
     ocp_nlp_solver_opts_set(nlp_config, nlp_opts, "qp_iter_max", &qp_solver_iter_max);
 
-int print_level = 0;
+
+    int qp_solver_warm_start = 1;
+    ocp_nlp_solver_opts_set(nlp_config, nlp_opts, "qp_warm_start", &qp_solver_warm_start);int print_level = 0;
     ocp_nlp_solver_opts_set(nlp_config, nlp_opts, "print_level", &print_level);
 
     int ext_cost_num_hess = 0;

@@ -283,12 +283,12 @@ time = linspace(0, t_sim, sim_steps);
 
 
 % Simulation parameters
-use_constant_attack = true;  
-use_random_attack = false;
+use_constant_attack = false;  
+use_random_attack = true;
 use_sinusoidal_attack = false;
 
 
-                       % Simulation index
+% Simulation index
 
 % save data for comparison figure
 % Load Python's numpy module

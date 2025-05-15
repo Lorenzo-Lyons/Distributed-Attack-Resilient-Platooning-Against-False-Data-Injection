@@ -1,5 +1,12 @@
 import numpy as np
 
+def saturate_action(u, u_min, u_max):
+    if u < u_min:
+        u = u_min
+    elif u > u_max:
+        u = u_max
+    return u
+
 
 class platooning_problem_parameters():
     def __init__(self,dart):
@@ -32,8 +39,18 @@ class DMPC():
     from acados_template import AcadosOcp, AcadosOcpSolver, AcadosModel
     
 
-    def __init__(self):
-        pass
+    def __init__(self,Tf, N, u_max,u_min,v_max,v_min,car_number,rebuild_solvers):
+        self.Tf = Tf
+        self.N = N
+        self.u_max = u_max
+        self.u_min = u_min
+        self.v_max = v_max
+        self.v_min = v_min
+        self.dt = Tf/N
+        self.rebuild_solvers = rebuild_solvers
+        self.solver_name = 'built_solvers/acados_ocp_platooning_N_' + str(N) + '_' + str(car_number) +'.json'
+        self.ocp = self.setup_mpc_solver()
+
 
     
     def export_double_integrator_model(self):
@@ -65,11 +82,9 @@ class DMPC():
         return model
 
     # 2. Define the MPC solver
-    def setup_mpc_solver(self,Tf, N, u_max,u_min,v_max,v_min):
+    def setup_mpc_solver(self):
         from acados_template import AcadosOcp, AcadosOcpSolver
         import os
-
-        solver_file = "acados_ocp_platooning.json"
 
         # Create ocp object
         ocp = AcadosOcp()
@@ -87,14 +102,14 @@ class DMPC():
         #ny = nx + nu  # number of outputs in cost function
 
         # Set prediction horizon
-        ocp.dims.N = N
+        ocp.dims.N = self.N
 
         # 1. Set cost function
         qu = 1  # Control weight
         qx = 1 #1 #1.6 # 1.6 for immediate crash in FDI  10 for crash during emergency brake
 
         qx_assumed = 20
-        qx_final = 10000 # this needs to be very high because it should really be a hard constraint in theory
+        qx_final = 500 #10000 # this needs to be very high because it should really be a hard constraint in theory
 
         # The 'EXTERNAL' cost type can be used to define general cost terms
         # We'll modify the cost to account for stage-wise references
@@ -112,14 +127,14 @@ class DMPC():
         # 2. Set constraints
 
         # Set the state constraints bounds
-        ocp.constraints.lbx = np.array([v_min])  # Lower bound on velocity
-        ocp.constraints.ubx = np.array([v_max])  # Upper bound on velocity
+        ocp.constraints.lbx = np.array([self.v_min])  # Lower bound on velocity
+        ocp.constraints.ubx = np.array([self.v_max])  # Upper bound on velocity
         ocp.constraints.idxbx = np.array([0])    # Specify which state is constrained (0 for velocity)
 
 
         ocp.constraints.constr_type = 'BGH'
-        ocp.constraints.lbu = np.array([u_min])
-        ocp.constraints.ubu = np.array([-u_min])  # this should really be u_max, but to have the same attack as in other cases we set it to -u_min
+        ocp.constraints.lbu = np.array([self.u_min])
+        ocp.constraints.ubu = np.array([self.u_max]) #-u_min  # this should really be u_max, but to have the same attack as in other cases we set it to -u_min
         ocp.constraints.idxbu = np.array([0])
 
         # # Enforce terminal control action to be zero at the last stage
@@ -130,38 +145,50 @@ class DMPC():
         ocp.constraints.x0 = np.array([0.0, 0.0])  # Starting from position 0
 
         # 3. Set solver options
-        ocp.solver_options.qp_solver = 'FULL_CONDENSING_QPOASES'
+        ocp.solver_options.qp_solver = 'FULL_CONDENSING_QPOASES' # 'FULL_CONDENSING_HPIPM' #'FULL_CONDENSING_QPOASES'
         ocp.solver_options.hessian_approx = 'EXACT' # EXACT   may fix the warning
         ocp.solver_options.integrator_type = 'ERK'
         ocp.solver_options.nlp_solver_type = 'SQP'
-        ocp.solver_options.tf = Tf
+        ocp.solver_options.tf = self.Tf
+        ocp.solver_options.qp_solver_warm_start = 1 # 0: no warm start, 1: warm start 2 : hot start
+        ocp.solver_options.globalization = 'FIXED_STEP' # 'MERIT_BACKTRACKING', 'FIXED_STEP' # fixed is the default
+        ocp.solver_options.print_level = 0 # no print
 
         # Initialize parameters with default values (this step is important to avoid dimension mismatch)
         ocp.parameter_values = np.zeros(npar)
 
         # Create solver
-        acados_ocp_solver = AcadosOcpSolver(ocp, json_file=solver_file)
+        #acados_ocp_solver = AcadosOcpSolver(ocp, json_file=self.solver_name)
+
+        if os.path.exists(self.solver_name) and not self.rebuild_solvers:
+            # Load pre-built solver
+            print('loading solver from file: ', self.solver_name)
+            acados_ocp_solver = AcadosOcpSolver(ocp, json_file=self.solver_name, build=False, generate=False)
+        else:
+            # Rebuild if not found
+            from acados_template import AcadosOcp
+            acados_ocp_solver = AcadosOcpSolver(ocp,json_file=self.solver_name)
 
         return acados_ocp_solver
     
-    def set_up_sovler_iteration(self, solver,N,x_ref,x_open_loop_prev,v_open_loop_prev_N,dt,u_min,u_max,x_current):
+    def set_up_sovler_iteration(self,x_ref,x_open_loop_prev,v_open_loop_prev_N,x_current):
         # store reference trajectory
-        x_assumed_open_loop = np.zeros(N+1)
+        x_assumed_open_loop = np.zeros(self.N+1)
     
         # Set stage-wise references and constraints
-        for k in range(N+1):
+        for k in range(self.N+1):
             x_ref_k = x_ref[k]  # Stage-wise references
             
             #if i > 0:
-            if k == N:
-                x_assumed_self = x_open_loop_prev[k] + dt * v_open_loop_prev_N  # this can be done since the acceleration is constrained to 0 at last stage
+            if k == self.N:
+                x_assumed_self = x_open_loop_prev[k] + self.dt * v_open_loop_prev_N  # this can be done since the acceleration is constrained to 0 at last stage
             else:
                 x_assumed_self = x_open_loop_prev[k+1] # position comunicated to neighbours on the previous iteration (time shifted by 1)
             # else:
             #     x_assumed_self = x_ref[i+k] # in the first stage use the reference as the past communicated position
 
             p_array = np.array([x_ref_k, x_assumed_self]) # each stage knows what the final reference is
-            solver.set(k, 'p', p_array)  # Set stage-wise references
+            self.ocp.set(k, 'p', p_array)  # Set stage-wise references
 
             # store reference trajectory
             x_assumed_open_loop[k] = x_assumed_self
@@ -170,44 +197,45 @@ class DMPC():
 
 
         # set initial condition
-        solver.set(0, "lbx", x_current)
-        solver.set(0, "ubx", x_current)
+        self.ocp.set(0, "lbx", x_current)
+        self.ocp.set(0, "ubx", x_current)
 
-        return solver,x_assumed_open_loop
+        return x_assumed_open_loop
 
-    def solve_mpc(self,solver,N):
+
+    def set_initial_guess(self, v_guess , x_guess, u_guess):
+
+        # Set initial guess for the entire horizon
+        for i in range(self.N):
+            self.ocp.set(i, "x", np.array([v_guess[i],x_guess[i]]))
+            self.ocp.set(i, "u", u_guess[i])
+
+        # Set the terminal state guess (stage N)
+        self.ocp.set(self.N, "x", np.array([v_guess[self.N],x_guess[self.N]]))
+
+
+    def solve_mpc(self):
         # Solve MPC problem
-        status = solver.solve()
+        status = self.ocp.solve()
 
         # Get optimal outputs
-        u_open_loop = np.zeros(N)
-        v_open_loop = np.zeros((N+1))
-        x_open_loop = np.zeros((N+1))
+        u_open_loop = np.zeros(self.N)
+        v_open_loop = np.zeros((self.N+1))
+        x_open_loop = np.zeros((self.N+1))
 
         # collect open loop trajectories
-        for k in range(N+1):
+        for k in range(self.N+1):
             # Get predicted states
-            state = solver.get(k, "x")
+            state = self.ocp.get(k, "x")
             v_open_loop[k] = state[0]
             x_open_loop[k] = state[1]
 
-        for k in range(N):
-            u_open_loop[k] = solver.get(k, "u")  
+        for k in range(self.N):
+            u_open_loop[k] = self.ocp.get(k, "u")  
 
         return u_open_loop,v_open_loop,x_open_loop
-    
 
-    def set_initial_guess(self,solver, v_guess , x_guess, u_guess):
-        N = solver.acados_ocp.dims.N  # Length of the horizon
 
-        # Set initial guess for the entire horizon
-        for i in range(N):
-            solver.set(i, "x", np.array([v_guess[i],x_guess[i]]))
-            solver.set(i, "u", u_guess[i])
-
-        # Set the terminal state guess (stage N)
-        solver.set(N, "x", np.array([v_guess[N],x_guess[N]]))
-        return solver
 
 
 

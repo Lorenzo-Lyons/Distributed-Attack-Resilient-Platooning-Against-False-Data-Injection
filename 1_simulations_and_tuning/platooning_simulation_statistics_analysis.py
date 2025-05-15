@@ -135,7 +135,7 @@ for sim_name in sorted_folders:
     time_to_brake = np.load(os.path.join(simulation_data_dir, sim_name, 'time_to_brake.npy'))
 
     # get extraction indexes between time to attack and time to brake
-    time_after_attack_starts = 2
+    time_after_attack_starts = 20
     time_to_attack_idx = np.argmin(np.abs(time_vec - (time_to_attack+time_after_attack_starts)))
     time_to_brake_idx = np.argmin(np.abs(time_vec - time_to_brake))
 
@@ -416,10 +416,10 @@ for label in row_order:
 
     row = (
         f"\multicolumn{{1}}{{|l|}}{{{row_name}}} & "
-        f"{fmt(stats['mean'])} & "
+        f"{fmt(-stats['mean'])} & "
         f"{fmt(stats['std'])} & "
-        f"{fmt(stats['max'])} & "
-        f"{fmt(stats['min'])} & "
+        f"{fmt(-stats['max'])} & "
+        f"{fmt(-stats['min'])} & "
         f"{fmt(stats['succes_rate_attack'], is_percent=True)} & "
         f"{fmt(stats['succes_rate'], is_percent=True)} \\\\ \\hline"
     )

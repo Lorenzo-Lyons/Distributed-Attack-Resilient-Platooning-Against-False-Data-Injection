@@ -1,13 +1,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-from classes_definintion import platooning_problem_parameters,Vehicle_model,set_scenario_parameters,generate_color_gradient,generate_color_1st_last_gray
+from classes_definintion import platooning_problem_parameters,Vehicle_model,\
+    set_scenario_parameters,generate_color_gradient,generate_color_1st_last_gray,saturate_action
 from tqdm import tqdm
 
 
 
 
-sim_runs = 100
+sim_runs = 999
 
 
 #our method with FDI attack and emergency brake
@@ -15,8 +16,20 @@ sim_runs = 100
 
 # DMPC with FDI attack and emergency brake
 scenario = 10
-#MPC_N = 20  # Number of steps in the horizon
 MPC_N = 40  # Number of steps in the horizon
+#MPC_N = 20  # Number of steps in the horizon
+rebuild_solvers = False
+
+
+
+use_constant_attack = True
+use_sinusoidal_attack = False
+use_random_attack = False
+
+
+
+
+
 
 
 dt_int = 0.05 #[s]
@@ -70,6 +83,9 @@ print('---------------------')
 
 
 
+attack_amplitude = np.abs(u_max)
+
+
 
 
 
@@ -120,9 +136,7 @@ time_to_attack = 0
 time_to_brake = simulation_time - 10 # time_to_brake
 
 
-use_constant_attack = True
-use_random_attack = False
-use_sinusoidal_attack = False
+
 
 
 
@@ -171,6 +185,8 @@ os.chdir(script_dir)
 
 # Set the simulation folder path
 sim_folder = os.path.join(sim_folder_name, sim_name)
+# Create the folder if it doesn't exist
+os.makedirs(sim_folder, exist_ok=True)
 
 # Get all files in the folder that match the pattern "0x_sim", "1x_sim", etc.
 sim_files = [f for f in os.listdir(sim_folder)
@@ -215,10 +231,10 @@ for s in  tqdm( range(sim_runs), desc ="Simulation runs") :
     
     
 
-    prev_atck_signal = np.random.uniform(u_min, u_max, size=n_follower_vehicles+1) # initial attack signal value
+    prev_atck_signal = np.random.uniform(-attack_amplitude, attack_amplitude, size=n_follower_vehicles+1) # initial attack signal value
     # determine random initial phase of sinusoidal attacks
     initial_phases = initial_phase = np.random.uniform(0, 2 * np.pi, size=n_follower_vehicles+1)
-    frequencies = np.random.uniform(0, 10, size=n_follower_vehicles+1)
+    frequencies = np.random.uniform(0, 3, size=n_follower_vehicles+1) # set max freq to 6 Hz since the niquist freq of 
 
     # save atack parameters
     np.save(os.path.join(sim_folder, str(s) + 'alpha_filters.npy'), alpha_filters)
@@ -273,8 +289,9 @@ for s in  tqdm( range(sim_runs), desc ="Simulation runs") :
         Tf = dt_int * MPC_N  # Time horizon
         v_min = vehicle_vec[0].v_min
 
-        DMPC_obj = DMPC()
-        MPC_solver = DMPC_obj.setup_mpc_solver(Tf, MPC_N,u_max,u_min,v_max,v_min)
+        for ii in range(0,n_follower_vehicles+1):
+            vehicle_vec[ii].DMPC_obj = DMPC(Tf, MPC_N, u_max,u_min,v_max,v_min,ii,rebuild_solvers)
+
 
         # create reference for the leader to track
         v_leader_reference = np.zeros((sim_steps,MPC_N+1))
@@ -326,21 +343,19 @@ for s in  tqdm( range(sim_runs), desc ="Simulation runs") :
 
         # -- leader --
         # attack signal
-        u_atck_random = (1-alpha_filters[0]) * prev_atck_signal[0] + alpha_filters[0] * np.random.uniform(u_min,-u_min)
+        u_atck_random = (1-alpha_filters[0]) * prev_atck_signal[0] + alpha_filters[0] * np.random.uniform(-attack_amplitude,attack_amplitude)
         prev_atck_signal[0] = u_atck_random # update previous attack signal
+
         if use_random_attack or use_constant_attack:
             u_atck_leader =  u_atck_random
+        elif use_sinusoidal_attack:
+            u_atck_leader =  attack_amplitude * np.sin(initial_phases[0]+(t*dt_int)/frequencies[0]*np.pi*2)
         else:
             u_atck_leader = 0
-        
-        if use_sinusoidal_attack:
-            u_atck_leader = u_atck_random + u_min * np.sin(initial_phases[0]+(t*dt_int)/frequencies[0]*np.pi*2)
-        
+
+
         # check if saturates
-        if u_atck_leader > u_max:
-            u_atck_leader = u_max
-        elif u_atck_leader < u_min:
-            u_atck_leader = u_min
+        u_atck_leader = saturate_action(u_atck_leader,u_min,u_max)
 
         # store leader acceleration for plots
         if use_MPC == False:
@@ -350,10 +365,7 @@ for s in  tqdm( range(sim_runs), desc ="Simulation runs") :
                 candidate_u_leader = feed_back_controller_leader + u_atck_leader
 
                 # check if saturates
-                if candidate_u_leader > u_max:
-                    candidate_u_leader = u_max
-                elif candidate_u_leader < u_min:
-                    candidate_u_leader = u_min
+                candidate_u_leader = saturate_action(candidate_u_leader,u_min,u_max)
 
                 # filter attack signal
                 vehicle_vec[0].u = candidate_u_leader
@@ -414,26 +426,23 @@ for s in  tqdm( range(sim_runs), desc ="Simulation runs") :
 
 
             # set up solver for current iteration
-            MPC_solver_t,x_assumed_open_loop_i = DMPC_obj.set_up_sovler_iteration(  MPC_solver,\
-                                                                                    MPC_N,\
-                                                                                    x_ref_i,\
+            x_assumed_open_loop_i = vehicle_vec[0].DMPC_obj.set_up_sovler_iteration(x_ref_i,\
                                                                                     x_open_loop_prev,\
                                                                                     v_open_loop_prev[-1],\
-                                                                                    dt_int,\
-                                                                                    u_min,\
-                                                                                    u_max,\
                                                                                     x_current)
             
             # provide an initial guess for the solver
-            x_guess = x_open_loop_prev
-            v_guess = v_open_loop_prev
-            u_guess = vehicle_vec[0].u_open_loop if t > 0 else np.zeros(MPC_N) # assign last stage velocity of previous iteration
-
-            MPC_solver_t = DMPC_obj.set_initial_guess(MPC_solver_t,v_guess , x_guess, u_guess)
+            # x_guess = x_open_loop_prev
+            # v_guess = v_open_loop_prev
+            # u_guess = vehicle_vec[0].u_open_loop if t > 0 else np.zeros(MPC_N) # assign last stage velocity of previous iteration
+            # # u_guess = np.zeros(MPC_N) # assign last stage velocity of previous iteration
+            # # v_guess = vehicle_vec[0].v * np.ones(MPC_N+1) # assign last stage velocity of previous iteration
+            # # x_guess = vehicle_vec[0].x + vehicle_vec[0].v * dt_int * np.arange(0, MPC_N + 1)
+            # # vehicle_vec[0].DMPC_obj.set_initial_guess(v_guess , x_guess, u_guess)
             
             # solve the optimization problem
             # Solve MPC problem
-            u_open_loop_leader,v_open_loop_leader,x_open_loop_leader = DMPC_obj.solve_mpc(MPC_solver_t,MPC_N)
+            u_open_loop_leader,v_open_loop_leader,x_open_loop_leader = vehicle_vec[0].DMPC_obj.solve_mpc()
 
             # store assumed leader trajectory
             vehicle_vec[0].u_open_loop = u_open_loop_leader
@@ -442,7 +451,8 @@ for s in  tqdm( range(sim_runs), desc ="Simulation runs") :
 
             # assign control input to leader
             if scenario == 10 and t*dt_int > time_to_attack and t*dt_int < time_to_brake:
-                vehicle_vec[0].u = u_open_loop_leader[0] + u_atck_leader
+                # check if saturates
+                vehicle_vec[0].u = saturate_action(u_open_loop_leader[0] + u_atck_leader,u_min,u_max)
             else:
                 vehicle_vec[0].u = u_open_loop_leader[0]
 
@@ -462,23 +472,17 @@ for s in  tqdm( range(sim_runs), desc ="Simulation runs") :
                 if use_ff:
                     # all vehicles are affected by communication attack
                     if t*dt_int > time_to_attack:
-                        u_atck_random = (1-alpha_filters[kk]) * prev_atck_signal[kk] + alpha_filters[kk] * np.random.uniform(u_min,-u_min)
-                        prev_atck_signal[kk] = u_atck_random # update previous attack signal
-                        
-                        u_ff = + u_atck_random 
-                        if use_sinusoidal_attack:
-                            u_ff = u_atck_random + u_min * np.sin(initial_phases[kk]+(t*dt_int)/frequencies[kk]*np.pi*2)
+                        if use_constant_attack or use_random_attack:
+                            u_atck_random = (1-alpha_filters[kk]) * prev_atck_signal[kk] + alpha_filters[kk] * np.random.uniform(u_min,-u_min)
+                            prev_atck_signal[kk] = u_atck_random # update previous attack signal
+                            u_ff = + u_atck_random 
+                        elif use_sinusoidal_attack:
+                            u_ff = attack_amplitude * np.sin(initial_phases[kk]+(t*dt_int)/frequencies[kk]*np.pi*2)
                         
                         # check if attack signal saturates
-                        if u_ff > u_max:
-                            u_ff = u_max
-                        elif u_ff < u_min:
-                            u_ff = u_min
+                        u_ff = saturate_action(u_ff,u_min,u_max)
                     else:
                         u_ff = vehicle_vec[kk-1].u
-                    #check if u_ff larger than u_max
-                    if u_ff > u_max:
-                        u_ff = u_max
 
 
 
@@ -521,7 +525,6 @@ for s in  tqdm( range(sim_runs), desc ="Simulation runs") :
                 else: # attack 
                     # generate attack signal
 
-
                     u_atck_mpc = np.zeros(MPC_N+1)
                     
                     if use_random_attack or use_constant_attack:
@@ -533,8 +536,8 @@ for s in  tqdm( range(sim_runs), desc ="Simulation runs") :
                             u_atck_mpc[jj] = (1-alpha_filters[kk]) * u_atck_mpc[jj-1]  + alpha_filters[kk] * np.random.uniform(u_min,-u_min)
                     elif use_sinusoidal_attack:
                         for jj in range(0,MPC_N+1):
-                            u_atck_mpc[jj] = u_min * np.sin(initial_phases[kk]+((t+jj)*dt_int)/frequencies[kk]*np.pi*2)
-                    
+                            u_atck_mpc[jj] = attack_amplitude * np.sin(initial_phases[kk]+((t+jj)*dt_int)/frequencies[kk]*np.pi*2)
+
                     # check if attack signal saturates
                     for jj in range(0,MPC_N+1):
                         if u_atck_mpc[jj] > u_max:
@@ -568,18 +571,17 @@ for s in  tqdm( range(sim_runs), desc ="Simulation runs") :
                 x_current = np.array([vehicle_vec[kk].v, vehicle_vec[kk].x])
 
                 # set up solver for current iteration
-                MPC_solver_t,x_assumed_open_loop_i = DMPC_obj.set_up_sovler_iteration(  MPC_solver,\
-                                                                                        MPC_N,\
-                                                                                        x_ref_i,\
-                                                                                        x_open_loop_prev,\
-                                                                                        v_open_loop_prev_N,\
-                                                                                        dt_int,\
-                                                                                        u_min,\
-                                                                                        u_max,\
-                                                                                        x_current)
+                vehicle_vec[kk].DMPC_obj.set_up_sovler_iteration(x_ref_i,\
+                                                                x_open_loop_prev,\
+                                                                v_open_loop_prev[-1],\
+                                                                x_current)
                 
+                # # u_guess = np.zeros(MPC_N) # assign last stage velocity of previous iteration
+                # # v_guess = vehicle_vec[kk].v * np.ones(MPC_N+1) # assign last stage velocity of previous iteration
+                # # x_guess = vehicle_vec[kk].x + vehicle_vec[0].v * dt_int * np.arange(0, MPC_N + 1)
+                # # vehicle_vec[kk].DMPC_obj.set_initial_guess(v_guess , x_guess, u_guess)
 
-                u_open_loop,v_open_loop,x_open_loop = DMPC_obj.solve_mpc(MPC_solver_t,MPC_N)
+                u_open_loop,v_open_loop,x_open_loop = vehicle_vec[kk].DMPC_obj.solve_mpc()
 
                 # store open loop trajectory
                 #vehicle_vec[kk].x_assumed = x_assumed_open_loop_i
@@ -636,11 +638,19 @@ for s in  tqdm( range(sim_runs), desc ="Simulation runs") :
         u_sim[:,kk] = u_total_followers[:,kk-1] if kk > 0 else u_vector_leader
 
 
+    # if save_data:
+    #     np.save(os.path.join(sim_folder_name, sim_name, str(s+sims_already_in_folder) + 'x_sim.npy'), x_sim)
+    #     np.save(os.path.join(sim_folder_name, sim_name, str(s+sims_already_in_folder) + 'v_sim.npy'), v_sim)
+    #     np.save(os.path.join(sim_folder_name, sim_name, str(s+sims_already_in_folder) +'u_sim.npy'), u_sim)
+
     if save_data:
-        np.save(os.path.join(sim_folder_name, sim_name, str(s+sims_already_in_folder) + 'x_sim.npy'), x_sim)
-        np.save(os.path.join(sim_folder_name, sim_name, str(s+sims_already_in_folder) + 'v_sim.npy'), v_sim)
-        np.save(os.path.join(sim_folder_name, sim_name, str(s+sims_already_in_folder) +'u_sim.npy'), u_sim)
-        
+        save_path = os.path.join(sim_folder_name, sim_name)
+        os.makedirs(save_path, exist_ok=True)
+
+        np.save(os.path.join(save_path, f'{s + sims_already_in_folder}x_sim.npy'), x_sim)
+        np.save(os.path.join(save_path, f'{s + sims_already_in_folder}v_sim.npy'), v_sim)
+        np.save(os.path.join(save_path, f'{s + sims_already_in_folder}u_sim.npy'), u_sim)
+      
 
 
 
