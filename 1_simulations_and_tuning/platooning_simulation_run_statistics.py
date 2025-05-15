@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 
 
-sim_runs = 999
+sim_runs = 1
 
 
 #our method with FDI attack and emergency brake
@@ -16,15 +16,15 @@ sim_runs = 999
 
 # DMPC with FDI attack and emergency brake
 scenario = 10
-MPC_N = 40  # Number of steps in the horizon
+MPC_N = 20  # Number of steps in the horizon
 #MPC_N = 20  # Number of steps in the horizon
-rebuild_solvers = False
+rebuild_solvers = True
 
 
 
-use_constant_attack = True
+use_constant_attack = False
 use_sinusoidal_attack = False
-use_random_attack = False
+use_random_attack = True
 
 
 

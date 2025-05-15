@@ -60,8 +60,8 @@ def select_color(folder_name,methods_colors):
 
 
 #sim_folder_name = 'simulation_data_statistics_constant_attack'
-sim_folder_name = 'simulation_data_statistics_sinusoidal_attack'
-#sim_folder_name = 'simulation_data_statistics_random_attack'
+#sim_folder_name = 'simulation_data_statistics_sinusoidal_attack'
+sim_folder_name = 'simulation_data_statistics_random_attack'
 
 
 # set current directory where the script is located
