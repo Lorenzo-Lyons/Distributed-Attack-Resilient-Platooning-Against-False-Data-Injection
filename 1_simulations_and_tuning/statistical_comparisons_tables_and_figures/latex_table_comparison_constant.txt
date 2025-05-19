@@ -1,0 +1,13 @@
+\begin{table}[]
+    \begin{tabular}{c|c|c|c|c|c|c|}
+    \cline{2-7}
+                                            & \begin{tabular}[c]{@{}c@{}}mean\\dist.\\ {[}m{]}\end{tabular} & \begin{tabular}[c]{@{}c@{}}std.\\ dev.\\ {[}m{]}\end{tabular} & \begin{tabular}[c]{@{}c@{}}max\\dist.\\ {[}m{]}\end{tabular} & \begin{tabular}[c]{@{}c@{}}min\\dist.\\ {[}m{]}\end{tabular} & \begin{tabular}[c]{@{}c@{}}safe\\ runs\\ (attack)\end{tabular} & \begin{tabular}[c]{@{}c@{}}safe\\ runs\\ (brake)\end{tabular} \\ \hline
+    \multicolumn{1}{|l|}{DMPC N=40} & 6.07 & 4.25 & -2.79 & 44.50 & 91.35\% & 8.16\% \\ \hline
+\multicolumn{1}{|l|}{DMPC N=20} & 6.00 & 1.31 & 3.76 & 8.21 & 100.00\% & 53.98\% \\ \hline
+\multicolumn{1}{|l|}{Kafash et al.} & 6.03 & 1.12 & 1.19 & 10.55 & 100.00\% & 0.00\% \\ \hline
+\multicolumn{1}{|l|}{\textbf{ACC+CACC}} & \textbf{6.01} & \textbf{1.15} & \textbf{4.00} & \textbf{7.98} & \textbf{100.00\%} & \textbf{100.00\%} \\ \hline
+\end{tabular}
+    \caption{Statistical results for attack: constant}
+    \label{tab:statistical_comparison_constant}
+    \end{table}
+    

@@ -2,7 +2,7 @@
 \begin{tabular}{c|c|c|c|c|c|c|}
 \cline{2-7}
                                         & \begin{tabular}[c]{@{}c@{}}mean\\dist.\\ {[}m{]}\end{tabular} & \begin{tabular}[c]{@{}c@{}}std.\\ dev.\\ {[}m{]}\end{tabular} & \begin{tabular}[c]{@{}c@{}}max\\dist.\\ {[}m{]}\end{tabular} & \begin{tabular}[c]{@{}c@{}}min\\dist.\\ {[}m{]}\end{tabular} & \begin{tabular}[c]{@{}c@{}}safe\\ runs\\ (attack)\end{tabular} & \begin{tabular}[c]{@{}c@{}}safe\\ runs\\ (brake)\end{tabular} \\ \hline
-\multicolumn{1}{|l|}{DMPC N=40} & 6.10 & 1.38 & 0.95 & 14.53 & 100.00\% & 0.00\% \\ \hline
+\multicolumn{1}{|l|}{DMPC N=40} & 6.04 & 1.17 & 0.02 & 15.70 & 100.00\% & 0.00\% \\ \hline
 \multicolumn{1}{|l|}{DMPC N=20} & 6.02 & 0.27 & 4.23 & 8.91 & 100.00\% & 49.57\% \\ \hline
 \multicolumn{1}{|l|}{Kafash et al.} & 6.00 & 0.13 & 5.17 & 6.81 & 100.00\% & 0.00\% \\ \hline
 \multicolumn{1}{|l|}{\textbf{ACC+CACC}} & \textbf{6.07} & \textbf{0.19} & \textbf{5.17} & \textbf{7.04} & \textbf{100.00\%} & \textbf{100.00\%} \\ \hline
