@@ -116,9 +116,9 @@ else:
 
 plt.xlabel('$h$') # ,fontsize=50
 plt.ylabel('$d$ [m]') # ,fontsize=50
-plt.plot(h_vec,h_vec*v_d,color='slategray',label='$d$ > positive gains constraint',linewidth=linewidth) # ,linewidth=10
-plt.plot(h_vec,d_stringstab,color='navy',label='$d$ < string stabilty constraint',linewidth=linewidth) # ,linewidth=10
-plt.plot(h_vec,d_crit_damp,color='cornflowerblue',label='$d$ < critically damped constraint',linewidth=linewidth) # ,linewidth=10
+plt.plot(h_vec,h_vec*v_d,color='slategray',label='$d$ = positive gains constraint',linewidth=linewidth) # ,linewidth=10
+plt.plot(h_vec,d_stringstab,color='navy',label='$d$ = string stabilty constraint',linewidth=linewidth) # ,linewidth=10
+plt.plot(h_vec,d_crit_damp,color='cornflowerblue',label='$d$ = critically damped constraint',linewidth=linewidth) # ,linewidth=10
 plt.fill_between(h_vec, h_vec*v_d, d_stringstab, color='skyblue',
                  alpha=0.25,label='admissible $h-d$ region')
 if dart_parameters:
@@ -246,21 +246,42 @@ plt.title('Final stopping distance between i and (i+1) vehicles')
 
 # --- check that the system is critically damped --- 
 # this should be the case by design but just to be sure we can plot the bode diagram of the transfer function
-zero=k/c
-delta= np.sqrt((c+k*h)**2-4*k)
-poles=(c+k*h)/(2)-delta/2
-
 from scipy import signal
 import matplotlib.pyplot as plt
+import numpy as np
 
-sys = signal.TransferFunction([c, k], [1, c+k*h,k])
+# Define parameters (example values if needed)
+# c = ...
+# k = ...
+# h = ...
+
+# Calculate zero and poles
+zero = k / c
+delta = np.sqrt((c + k * h)**2 - 4 * k)
+pole1 = (c + k * h) / 2 - delta / 2
+pole2 = (c + k * h) / 2 + delta / 2
+
+# Create transfer function
+sys = signal.TransferFunction([c, k], [1, c + k * h, k])
 w, mag, phase = signal.bode(sys)
 
+# Plot Bode magnitude
 plt.figure()
-plt.semilogx(w, mag)    # Bode magnitude plot
-plt.title(' p_(i+1)/p_i Transfer function : max =' + str(mag.max()))
-# plt.figure()
-# plt.semilogx(w, phase)  # Bode phase plot
+plt.semilogx(w, mag, linewidth=4, label='Bode magnitude')
+plt.title('p$_{i+1}$/p$_i$ Transfer Function')
+plt.ylabel('Magnitude [dB]')
+plt.xlabel('Frequency [rad/s]')
+
+# Add vertical lines for poles and zero
+plt.axvline(zero, color='green', linestyle='--', label=f'Zero: {zero:.2f} rad/s')
+plt.axvline(pole1, color='red', linestyle=':', label=f'Pole 1: {pole1:.2f} rad/s')
+plt.axvline(pole2, color='red', linestyle=':', label=f'Pole 2: {pole2:.2f} rad/s')
+
+# Plot settings
+plt.legend()
+plt.grid(True, which='both', ls='--')
+plt.tight_layout()
+plt.show()
 
 
 

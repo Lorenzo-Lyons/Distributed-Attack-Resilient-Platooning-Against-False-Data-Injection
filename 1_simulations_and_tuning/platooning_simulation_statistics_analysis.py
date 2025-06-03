@@ -51,7 +51,7 @@ def select_color(folder_name,methods_colors):
         color = methods_colors[1]
     elif folder_name == '3Kafash et al.':
         color = methods_colors[2]
-    elif folder_name == '4ACC + CACC':
+    elif folder_name == '4CACC':
         color = methods_colors[3]
     return color
 
@@ -69,6 +69,17 @@ sim_folders = ['simulation_data_statistics_constant_attack',
 # for latex table caption
 tabular = '{tabular}'
 table = '{table}'
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -129,7 +140,7 @@ for sim_folder_name in sim_folders:
     # TEMP, eventually have this for all simulations
     for sim_name in sorted_folders:
         # Format label: bold if last folder
-        if sim_name[1:] == 'ACC + CACC':
+        if sim_name[1:] == 'CACC':
             plot_label = r'$\mathbf{' + sim_name[1:] + '}$'
             plot_linewidth = 3
             line_plot_alpha = 0.8
@@ -387,63 +398,95 @@ for sim_folder_name in sim_folders:
 
 
 
+
+
+
+
     # produce latex table
 
 
     # Order of rows to match your table
     row_order = cleaned_folders
 
-    ## Start LaTeX table string
-    latex_table = r"""\begin{table}[]
+    # --- Determine best values for bolding ---
+
+    # Precompute values to select which entry is 'best' for each column
+    def closest_to(val, target=6.0):
+        return abs(val - target)
+
+    from math import isclose
+
+    # Tolerances for equality (to handle float rounding)
+    TOL = 0.019
+
+    # Helper to find all labels matching the best value under a metric
+    def get_best_labels(metric_fn, reverse=False):
+        values = {label: metric_fn(stats) for label, stats in statistics.items()}
+        best_val = max(values.values()) if reverse else min(values.values())
+        return [label for label, val in values.items() if isclose(val, best_val, abs_tol=TOL)]
+
+    best_label_by = {
+        'mean': get_best_labels(lambda s: abs(-s['mean'] - 6)),         # closest to 6
+        'std': get_best_labels(lambda s: s['std']),                     # smallest
+        'max': get_best_labels(lambda s: abs(-s['max'] - 6)),           # closest to 6
+        'min': get_best_labels(lambda s: abs(-s['min'] - 6)),           # closest to 6
+        'attack': [label for label, s in statistics.items() if s['succes_rate_attack'] >= 99.995],
+        'brake': [label for label, s in statistics.items() if s['succes_rate'] >= 99.995],
+    }
+
+    # --- Start LaTeX table ---
+    latex_table = r"""\begin{table}[h]
     \begin{tabular}{c|c|c|c|c|c|c|}
     \cline{2-7}
                                             & \begin{tabular}[c]{@{}c@{}}mean\\dist.\\ {[}m{]}\end{tabular} & \begin{tabular}[c]{@{}c@{}}std.\\ dev.\\ {[}m{]}\end{tabular} & \begin{tabular}[c]{@{}c@{}}max\\dist.\\ {[}m{]}\end{tabular} & \begin{tabular}[c]{@{}c@{}}min\\dist.\\ {[}m{]}\end{tabular} & \begin{tabular}[c]{@{}c@{}}safe\\ runs\\ (attack)\end{tabular} & \begin{tabular}[c]{@{}c@{}}safe\\ runs\\ (brake)\end{tabular} \\ \hline
     """
 
-
-
-
-
-    # Add rows
+    # --- Add rows ---
     for label in row_order:
         stats = statistics[label]
 
-        is_bold_row = label == "ACC + CACC"
-        row_name = r"\textbf{ACC+CACC}" if is_bold_row else label
+        def fmt(val, bold=False, is_percent=False):
+            if is_percent:
+                if abs(val - 100) < 0.005 or abs(val - 0) < 0.005:
+                    s = f"{round(val)}\\%"
+                else:
+                    s = f"{val:.2f}\\%"
+            else:
+                s = f"{val:.2f}"
+            return rf"\textbf{{{s}}}" if bold else s
 
-        def fmt(val, is_percent=False):
-            s = f"{val:.2f}\\%" if is_percent else f"{val:.2f}"
-            return rf"\textbf{{{s}}}" if is_bold_row else s
+        row_name = label  # No bold on row label
 
         row = (
-            f"\multicolumn{{1}}{{|l|}}{{{row_name}}} & "
-            f"{fmt(-stats['mean'])} & "
-            f"{fmt(stats['std'])} & "
-            f"{fmt(-stats['max'])} & "
-            f"{fmt(-stats['min'])} & "
-            f"{fmt(stats['succes_rate_attack'], is_percent=True)} & "
-            f"{fmt(stats['succes_rate'], is_percent=True)} \\\\ \\hline"
+            f"\multicolumn{{1}}{{|c|}}{{{row_name}}} & "
+            f"{fmt(-stats['mean'], bold=(label in best_label_by['mean']))} & "
+            f"{fmt(stats['std'], bold=(label in best_label_by['std']))} & "
+            f"{fmt(-stats['max'], bold=(label in best_label_by['max']))} & "
+            f"{fmt(-stats['min'], bold=(label in best_label_by['min']))} & "
+            f"{fmt(stats['succes_rate_attack'], is_percent=True, bold=(label in best_label_by['attack']))} & "
+            f"{fmt(stats['succes_rate'], is_percent=True, bold=(label in best_label_by['brake']))} \\\\ \\hline"
         )
+
+
 
         latex_table += row + "\n"
 
-    # Finish table
+    # --- Finish table ---
     latex_table += f"""\end{tabular}
-    \caption{{Statistical results for attack: {attack_name}}}
+    \caption{{Simulation campaign results for attack: {attack_name}.}}
     \label{{tab:statistical_comparison_{attack_name.replace(' ', '_')}}}
     \end{table}
     """
 
+    # --- Save to .txt file ---
+    latex_table_name = 'latex_table_comparison_' + attack_name + '.txt'
+    table_path = os.path.join(figure_and_tables_output_folder, latex_table_name)
 
-
-
-    # Save to .txt file
-    latex_table_name = 'latex_table_comparison_'+ attack_name + '.txt'
-    table_path = os.path.join(figure_and_tables_output_folder,latex_table_name)  
     with open(table_path, "w") as f:
         f.write(latex_table)
 
-    print("LaTeX table saved to 'table_output.txt'.")
+    print("LaTeX table saved to:", latex_table_name)
+
 
 
 

@@ -111,9 +111,9 @@ time_to_brake = 11
 
 
 
-fig_pos, ax_pos = plt.subplots(nrows=1, ncols=2, figsize=(16, 3.1))
+fig_pos, ax_pos = plt.subplots(nrows=1, ncols=2, figsize=(18, 3.1))
 fig_pos.subplots_adjust(
-top=1.0,
+top=0.900,
 bottom=0.195,
 left=0.035,
 right=0.815,
@@ -168,14 +168,16 @@ ax_pos[0].set_xlim(x_lims)
 ax_pos[0].set_yticks([0, -3, -6])
 ax_pos[0].set_yticklabels(['0', '3', '6'])  # Remove minus signs from labels
 ax_pos[0].set_xlabel('time [s]')
-ax_pos[0].set_ylabel(r'$d_1$ [m]')
+ax_pos[0].set_ylabel(r'$d_2$ [m]')
+ax_pos[0].set_title(r'Distance $d_2=p_1-p_2$')
 
 ax_pos[1].set_ylim(y_lims)
 ax_pos[1].set_xlim(x_lims)
 ax_pos[1].set_yticks([0, -3, -6])
 ax_pos[1].set_yticklabels(['0', '3', '6'])  # Remove minus signs from labels
 ax_pos[1].set_xlabel('time [s]')
-ax_pos[1].set_ylabel(r'$d_2$ [m]')
+ax_pos[1].set_ylabel(r'$d_3$ [m]')
+ax_pos[1].set_title(r'Distance $d_3=p_2-p_3$')
 
 ax_pos[1].legend(bbox_to_anchor=(1.01, 1.05))
 
