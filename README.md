@@ -31,7 +31,7 @@ The package "platooning_utilities" is intended to be run on a laptop and can be 
 <h2 align="center"><strong>Robust CACC against FDI attacks</strong></h2>
 
 <p align="center">
-  <img src="readme_images/CACC_robustness_cropped.gif" alt="Robust CACC against FDI attacks" width="850"/>
+  <img src="readme_images/CACC_robustness_cropped2.gif" alt="Robust CACC against FDI attacks" width="850"/>
 </p>
 
 
