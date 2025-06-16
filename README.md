@@ -21,9 +21,22 @@ This folder contains the experimental data and the code used to generate the fig
 The package "platooning_utilities" is intended to be run on a laptop and can be used while playing the provided ros .bag files in "2_platooning_experiments_data_processing/experiment_data", while platooning_pkg is intended to run on [DART](https://github.com/Lorenzo-Lyons/DART.git), the platform used to conduct the experiments. 
 
 
+<h2 align="center"><strong>On-board localization and Sensor-based ACC</strong></h2>
+
+<p align="center">
+  <img src="readme_images/localization_cropped.gif" alt="On board localization and sensor based ACC" width="850"/>
+</p>
+
+
+<h2 align="center"><strong>Robust CACC against FDI attacks</strong></h2>
+
+<p align="center">
+  <img src="readme_images/CACC_robustness_cropped.gif" alt="Robust CACC against FDI attacks" width="850"/>
+</p>
+
 
 <h2 align="center"><strong>Distributed autonomous platoon rearranging</strong></h2>
 
 <p align="center">
-  <img src="readme_images/rearranging.gif" alt="rearranging_gif"/>
+  <img src="readme_images/rearranging.gif" alt="rearranging_gif" width="850"/>
 </p>
