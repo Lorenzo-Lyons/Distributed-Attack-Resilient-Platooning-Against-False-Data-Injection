@@ -1,13 +1,13 @@
-\begin{table}[]
+\begin{table}[h]
     \begin{tabular}{c|c|c|c|c|c|c|}
     \cline{2-7}
                                             & \begin{tabular}[c]{@{}c@{}}mean\\dist.\\ {[}m{]}\end{tabular} & \begin{tabular}[c]{@{}c@{}}std.\\ dev.\\ {[}m{]}\end{tabular} & \begin{tabular}[c]{@{}c@{}}max\\dist.\\ {[}m{]}\end{tabular} & \begin{tabular}[c]{@{}c@{}}min\\dist.\\ {[}m{]}\end{tabular} & \begin{tabular}[c]{@{}c@{}}safe\\ runs\\ (attack)\end{tabular} & \begin{tabular}[c]{@{}c@{}}safe\\ runs\\ (brake)\end{tabular} \\ \hline
-    \multicolumn{1}{|l|}{DMPC N=40} & 6.00 & 0.78 & -2.79 & 33.03 & 100.00\% & 0.01\% \\ \hline
-\multicolumn{1}{|l|}{DMPC N=20} & 6.25 & 0.86 & 0.25 & 16.40 & 100.00\% & 27.50\% \\ \hline
-\multicolumn{1}{|l|}{Kafash et al.} & 6.00 & 0.26 & 4.93 & 7.27 & 100.00\% & 0.00\% \\ \hline
-\multicolumn{1}{|l|}{\textbf{ACC+CACC}} & \textbf{6.01} & \textbf{0.37} & \textbf{4.70} & \textbf{7.27} & \textbf{100.00\%} & \textbf{100.00\%} \\ \hline
+    \multicolumn{1}{|c|}{DMPC N=40} & \textbf{6.00} & 0.78 & -2.79 & 33.03 & \textbf{100\%} & 0.01\% \\ \hline
+\multicolumn{1}{|c|}{DMPC N=20} & 6.25 & 0.86 & 0.25 & 16.40 & \textbf{100\%} & 27.50\% \\ \hline
+\multicolumn{1}{|c|}{Kafash et al.} & \textbf{6.00} & \textbf{0.26} & \textbf{4.93} & \textbf{7.27} & \textbf{100\%} & 0\% \\ \hline
+\multicolumn{1}{|c|}{CACC} & \textbf{6.01} & 0.37 & 4.70 & \textbf{7.27} & \textbf{100\%} & \textbf{100\%} \\ \hline
 \end{tabular}
-    \caption{Statistical results for attack: sinusoidal}
+    \caption{Simulation campaign results for attack: sinusoidal.}
     \label{tab:statistical_comparison_sinusoidal}
     \end{table}
     

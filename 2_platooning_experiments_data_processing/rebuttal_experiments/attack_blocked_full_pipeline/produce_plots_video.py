@@ -107,7 +107,7 @@ for current_time in times:
             linewidth=linewidth_acc,
             zorder=2
         )
-
+ 
     # Plot u_com_1 in color of vehicle 2
     if ucom_window:
         ax.plot(

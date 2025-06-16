@@ -27,7 +27,7 @@ z
 " style="fill:none;"/>
    </g>
    <g id="PolyCollection_1">
-    <path clip-path="url(#pdb177a1aec)" d="M 222.784 302.4 
+    <path clip-path="url(#pbc6a10f0be)" d="M 222.784 302.4 
 L 222.784 302.4 
 L 224.766333 301.810822 
 L 226.748665 301.221643 
@@ -1038,10 +1038,10 @@ z
       <defs>
        <path d="M 0 0 
 L 0 3.5 
-" id="mafc277e1bb" style="stroke:#000000;stroke-width:0.8;"/>
+" id="m7da3a57cc3" style="stroke:#000000;stroke-width:0.8;"/>
       </defs>
       <g>
-       <use style="stroke:#000000;stroke-width:0.8;" x="222.784" xlink:href="#mafc277e1bb" y="302.4"/>
+       <use style="stroke:#000000;stroke-width:0.8;" x="222.784" xlink:href="#m7da3a57cc3" y="302.4"/>
       </g>
      </g>
      <g id="text_1">
@@ -1085,7 +1085,7 @@ z
     <g id="xtick_2">
      <g id="line2d_2">
       <g>
-       <use style="stroke:#000000;stroke-width:0.8;" x="364.096" xlink:href="#mafc277e1bb" y="302.4"/>
+       <use style="stroke:#000000;stroke-width:0.8;" x="364.096" xlink:href="#m7da3a57cc3" y="302.4"/>
       </g>
      </g>
      <g id="text_2">
@@ -1126,7 +1126,7 @@ z
     <g id="xtick_3">
      <g id="line2d_3">
       <g>
-       <use style="stroke:#000000;stroke-width:0.8;" x="505.408" xlink:href="#mafc277e1bb" y="302.4"/>
+       <use style="stroke:#000000;stroke-width:0.8;" x="505.408" xlink:href="#m7da3a57cc3" y="302.4"/>
       </g>
      </g>
      <g id="text_3">
@@ -1156,7 +1156,7 @@ z
     <g id="xtick_4">
      <g id="line2d_4">
       <g>
-       <use style="stroke:#000000;stroke-width:0.8;" x="646.72" xlink:href="#mafc277e1bb" y="302.4"/>
+       <use style="stroke:#000000;stroke-width:0.8;" x="646.72" xlink:href="#m7da3a57cc3" y="302.4"/>
       </g>
      </g>
      <g id="text_4">
@@ -1206,10 +1206,10 @@ z
       <defs>
        <path d="M 0 0 
 L -3.5 0 
-" id="m1f63457986" style="stroke:#000000;stroke-width:0.8;"/>
+" id="m735fa8fc7a" style="stroke:#000000;stroke-width:0.8;"/>
       </defs>
       <g>
-       <use style="stroke:#000000;stroke-width:0.8;" x="222.784" xlink:href="#m1f63457986" y="302.4"/>
+       <use style="stroke:#000000;stroke-width:0.8;" x="222.784" xlink:href="#m735fa8fc7a" y="302.4"/>
       </g>
      </g>
      <g id="text_6">
@@ -1222,7 +1222,7 @@ L -3.5 0
     <g id="ytick_2">
      <g id="line2d_6">
       <g>
-       <use style="stroke:#000000;stroke-width:0.8;" x="222.784" xlink:href="#m1f63457986" y="134.4"/>
+       <use style="stroke:#000000;stroke-width:0.8;" x="222.784" xlink:href="#m735fa8fc7a" y="134.4"/>
       </g>
      </g>
      <g id="text_7">
@@ -1329,19 +1329,19 @@ z
     </g>
    </g>
    <g id="line2d_7">
-    <path clip-path="url(#pdb177a1aec)" d="M 222.784 302.4 
+    <path clip-path="url(#pbc6a10f0be)" d="M 222.784 302.4 
 L 684.3608 165.212602 
 L 684.3608 165.212602 
 " style="fill:none;stroke:#708090;stroke-linecap:square;stroke-width:10;"/>
    </g>
    <g id="line2d_8">
-    <path clip-path="url(#pdb177a1aec)" d="M 222.784 302.4 
+    <path clip-path="url(#pbc6a10f0be)" d="M 222.784 302.4 
 L 684.3608 12.78216 
 L 684.3608 12.78216 
 " style="fill:none;stroke:#000080;stroke-linecap:square;stroke-width:10;"/>
    </g>
    <g id="line2d_9">
-    <path clip-path="url(#pdb177a1aec)" d="M 222.784 219.812315 
+    <path clip-path="url(#pbc6a10f0be)" d="M 222.784 219.812315 
 L 260.448321 202.281742 
 L 298.112641 184.517011 
 L 335.776962 166.51812 
@@ -1398,17 +1398,19 @@ L 76.8 41.92
     </g>
     <g id="line2d_11"/>
     <g id="text_9">
-     <!-- $d$ &gt; positive gains constraint -->
+     <!-- $d$ = positive gains constraint -->
      <defs>
-      <path d="M 10.59375 49.21875 
-L 10.59375 58.109375 
-L 73.1875 35.40625 
-L 73.1875 27.296875 
-L 10.59375 4.59375 
-L 10.59375 13.484375 
-L 60.890625 31.296875 
+      <path d="M 10.59375 45.40625 
+L 73.1875 45.40625 
+L 73.1875 37.203125 
+L 10.59375 37.203125 
 z
-" id="DejaVuSans-62"/>
+M 10.59375 25.484375 
+L 73.1875 25.484375 
+L 73.1875 17.1875 
+L 10.59375 17.1875 
+z
+" id="DejaVuSans-61"/>
       <path d="M 18.109375 8.203125 
 L 18.109375 -20.796875 
 L 9.078125 -20.796875 
@@ -1676,7 +1678,7 @@ z
      <g transform="translate(102.4 53.12)scale(0.32 -0.32)">
       <use transform="translate(0 0.015625)" xlink:href="#DejaVuSans-Oblique-100"/>
       <use transform="translate(63.476562 0.015625)" xlink:href="#DejaVuSans-32"/>
-      <use transform="translate(95.263672 0.015625)" xlink:href="#DejaVuSans-62"/>
+      <use transform="translate(95.263672 0.015625)" xlink:href="#DejaVuSans-61"/>
       <use transform="translate(179.052734 0.015625)" xlink:href="#DejaVuSans-32"/>
       <use transform="translate(210.839844 0.015625)" xlink:href="#DejaVuSans-112"/>
       <use transform="translate(274.316406 0.015625)" xlink:href="#DejaVuSans-111"/>
@@ -1712,17 +1714,8 @@ L 76.8 88.96
     </g>
     <g id="line2d_13"/>
     <g id="text_10">
-     <!-- $d$ &lt; string stabilty constraint -->
+     <!-- $d$ = string stabilty constraint -->
      <defs>
-      <path d="M 73.1875 49.21875 
-L 22.796875 31.296875 
-L 73.1875 13.484375 
-L 73.1875 4.59375 
-L 10.59375 27.296875 
-L 10.59375 35.40625 
-L 73.1875 58.109375 
-z
-" id="DejaVuSans-60"/>
       <path d="M 48.6875 27.296875 
 Q 48.6875 37.203125 44.609375 42.84375 
 Q 40.53125 48.484375 33.40625 48.484375 
@@ -1774,7 +1767,7 @@ z
      <g transform="translate(102.4 100.16)scale(0.32 -0.32)">
       <use transform="translate(0 0.015625)" xlink:href="#DejaVuSans-Oblique-100"/>
       <use transform="translate(63.476562 0.015625)" xlink:href="#DejaVuSans-32"/>
-      <use transform="translate(95.263672 0.015625)" xlink:href="#DejaVuSans-60"/>
+      <use transform="translate(95.263672 0.015625)" xlink:href="#DejaVuSans-61"/>
       <use transform="translate(179.052734 0.015625)" xlink:href="#DejaVuSans-32"/>
       <use transform="translate(210.839844 0.015625)" xlink:href="#DejaVuSans-115"/>
       <use transform="translate(262.939453 0.015625)" xlink:href="#DejaVuSans-116"/>
@@ -1811,7 +1804,7 @@ L 76.8 136
     </g>
     <g id="line2d_15"/>
     <g id="text_11">
-     <!-- $d$ &lt; critically damped constraint -->
+     <!-- $d$ = critically damped constraint -->
      <defs>
       <path d="M 45.40625 46.390625 
 L 45.40625 75.984375 
@@ -1843,7 +1836,7 @@ z
      <g transform="translate(102.4 147.2)scale(0.32 -0.32)">
       <use transform="translate(0 0.015625)" xlink:href="#DejaVuSans-Oblique-100"/>
       <use transform="translate(63.476562 0.015625)" xlink:href="#DejaVuSans-32"/>
-      <use transform="translate(95.263672 0.015625)" xlink:href="#DejaVuSans-60"/>
+      <use transform="translate(95.263672 0.015625)" xlink:href="#DejaVuSans-61"/>
       <use transform="translate(179.052734 0.015625)" xlink:href="#DejaVuSans-32"/>
       <use transform="translate(210.839844 0.015625)" xlink:href="#DejaVuSans-99"/>
       <use transform="translate(265.820312 0.015625)" xlink:href="#DejaVuSans-114"/>
@@ -1921,7 +1914,7 @@ z
   </g>
  </g>
  <defs>
-  <clipPath id="pdb177a1aec">
+  <clipPath id="pbc6a10f0be">
    <rect height="302.4" width="423.936" x="222.784" y="-0"/>
   </clipPath>
  </defs>

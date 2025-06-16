@@ -1,0 +1,18 @@
+digraph G {
+"base_link_1" -> "scan_1"[label="Broadcaster: /play_1748602741028063880\nAverage rate: 25.024 Hz\nMost recent transform: 1748372939.986 ( 229808.115 sec old)\nBuffer length: 4.995 sec\n"];
+"odom_1" -> "base_link_1"[label="Broadcaster: /play_1748602741028063880\nAverage rate: 10.210 Hz\nMost recent transform: 1748372939.940 ( 229808.162 sec old)\nBuffer length: 4.897 sec\n"];
+"base_link_3" -> "scan_3"[label="Broadcaster: /play_1748602741028063880\nAverage rate: 25.027 Hz\nMost recent transform: 1748372939.990 ( 229808.112 sec old)\nBuffer length: 4.995 sec\n"];
+"odom_3" -> "base_link_3"[label="Broadcaster: /play_1748602741028063880\nAverage rate: 10.230 Hz\nMost recent transform: 1748372939.853 ( 229808.249 sec old)\nBuffer length: 4.887 sec\n"];
+"base_link_4" -> "scan_4"[label="Broadcaster: /play_1748602741028063880\nAverage rate: 25.064 Hz\nMost recent transform: 1748372939.970 ( 229808.132 sec old)\nBuffer length: 4.987 sec\n"];
+"odom_4" -> "base_link_4"[label="Broadcaster: /play_1748602741028063880\nAverage rate: 10.209 Hz\nMost recent transform: 1748372939.886 ( 229808.216 sec old)\nBuffer length: 4.898 sec\n"];
+"base_link_2" -> "scan_2"[label="Broadcaster: /play_1748602741028063880\nAverage rate: 25.081 Hz\nMost recent transform: 1748372939.975 ( 229808.127 sec old)\nBuffer length: 4.984 sec\n"];
+"odom_2" -> "base_link_2"[label="Broadcaster: /play_1748602741028063880\nAverage rate: 10.211 Hz\nMost recent transform: 1748372939.838 ( 229808.263 sec old)\nBuffer length: 4.799 sec\n"];
+"map" -> "odom_3"[label="Broadcaster: /play_1748602741028063880\nAverage rate: 8.830 Hz\nMost recent transform: 1748372940.253 ( 229807.848 sec old)\nBuffer length: 4.870 sec\n"];
+"map" -> "odom_4"[label="Broadcaster: /play_1748602741028063880\nAverage rate: 8.972 Hz\nMost recent transform: 1748372940.247 ( 229807.854 sec old)\nBuffer length: 4.904 sec\n"];
+"map" -> "odom_2"[label="Broadcaster: /play_1748602741028063880\nAverage rate: 8.798 Hz\nMost recent transform: 1748372940.244 ( 229807.858 sec old)\nBuffer length: 4.887 sec\n"];
+"map" -> "odom_1"[label="Broadcaster: /play_1748602741028063880\nAverage rate: 8.938 Hz\nMost recent transform: 1748372940.329 ( 229807.773 sec old)\nBuffer length: 4.923 sec\n"];
+edge [style=invis];
+ subgraph cluster_legend { style=bold; color=black; label ="view_frames Result";
+"Recorded at time: 1748602748.102"[ shape=plaintext ] ;
+ }->"map";
+}

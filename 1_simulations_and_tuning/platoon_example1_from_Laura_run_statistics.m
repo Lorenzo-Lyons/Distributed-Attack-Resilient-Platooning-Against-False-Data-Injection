@@ -271,7 +271,7 @@ x_0 = zeros(1,n);     % column vector
 
 
 
-sim_runs = 1000;
+sim_runs = 1;
 sim_steps = round(t_sim / dt_sim);
 
 % Time vector
@@ -450,23 +450,26 @@ figure(11); clf;
 
 hold on;
 plot(time, d * ones(1, length(time)), '--', 'Color', [0.5, 0.5, 0.5], 'LineWidth', 1.5);
+plot(time, 0 * ones(1, length(time)), '--', 'Color', [1, 0, 0], 'LineWidth', 3);
 for i = 1:n_follower_vehicles
     
-    if i == 1
-    plot(time, x_history(i, :),'--', 'Color', colors(i, :), 'LineWidth', 1.5);   
-    else
-    plot(time, x_history(i, :), 'Color', colors(i, :), 'LineWidth', 1.5);
-    end
+%     if i == 1
+%     plot(time, x_history(i, :),'--', 'Color', colors(i, :), 'LineWidth', 1.5);   
+%     else
+    plot(time, 6-x_history(i, :), 'Color', colors(i, :), 'LineWidth', 1.5);
+    %end
 end
 hold off;
 
-xlabel('Time Step');
-ylabel('State Values');
-title('States v_i Over Time');
+xlabel('Time [s]');
+ylabel('distance to predecessor');
+title('States d_i Over Time');
 
 % Generate dynamic legend labels
-legend_labels = arrayfun(@(i) sprintf('d_{%d}',1 + i - start_idx), start_idx:num_states, 'UniformOutput', false);
+dynamic_labels = arrayfun(@(i) sprintf('d_{%d}',1 + i - start_idx), start_idx:num_states, 'UniformOutput', false);
+legend_labels = [{'desired distance', 'collision'}, dynamic_labels{:}];
 legend(legend_labels, 'Location', 'best');
+
 
 grid on;
 

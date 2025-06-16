@@ -121,7 +121,7 @@ for current_time in times:
         axs[0].plot(
             [t - current_time for t, _ in ucom_window],
             [v for _, v in ucom_window],
-            label=r'$\dot{v}_1$ sent to 2',
+            label=r'broadcasted $\dot{v}_1$ ',
             color=vehicle_colors[2],
             linewidth=linewidth_ucomm,
             zorder=3,

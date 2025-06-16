@@ -13,8 +13,8 @@ vehicle_colors = ['#999999',"#d8973c","#63b4d1","#0c7c59","#ff3c38"]
 
 # Folder containing rosbags
 #bag_folder = 'rebuttal_experiments/CACC_vs_ACC_data_only' 
-#bag_folder = 'rebuttal_experiments/CACC_vs_ACC_data_only_sin_v' 
-bag_folder = os.path.join('rebuttal_experiments/CACC_vs_ACC_data_only_constant_v')
+bag_folder = 'rebuttal_experiments/CACC_vs_ACC_data_only_sin_v' 
+#bag_folder = os.path.join('rebuttal_experiments/CACC_vs_ACC_data_only_constant_v')
 
 
 csv_folder = os.path.join(bag_folder, 'csv_files')
@@ -130,7 +130,7 @@ experiment_names = os.listdir(csv_folder)
 
 
 # Plotting
-fig, axs = plt.subplots(1, 2, figsize=(14, 3),sharey=True) # , sharex=True, sharey=True
+fig, axs = plt.subplots(2, 1, figsize=(14, 3),sharey=True) # , sharex=True, sharey=True
 axs = axs.flatten()
 import os
 import pandas as pd
@@ -220,7 +220,7 @@ for i, experiment_name in enumerate(experiment_names):
 
 # produce caption for the table
 if 'sin' in bag_folder:
-    caption = r"Distances for CACC and ACC platooning with leader executing a sinusoidal velocity profile."
+    caption = r"Distances for ACC and CACC platooning with leader executing a sinusoidal velocity profile. The data is collected over a $60$s period for each control algorithm. The mean represents the time-averaged value, and the standard deviation quantifies the temporal variation around this mean."
     latex_label = r"tab:distances_sin_v"
 else:
     caption = r"Distances for CACC and ACC platooning with leader executing a constant velocity profile."
@@ -237,7 +237,7 @@ row_names = {
 }
 
 latex_lines = [
-    r"\begin{table}[]",
+    r"\begin{table}[h]",
     r"\begin{tabular}{c|cc|cc|cc|}",
     r"\cline{2-7}",
     r"                                      & \multicolumn{2}{c|}{car 1}                                    & \multicolumn{2}{c|}{car 2}                                    & \multicolumn{2}{c|}{car 3}                                    \\ \cline{2-7}",
