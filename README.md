@@ -1,5 +1,7 @@
 # Distributed-Attack-Resilient-Platooning-Against-False-Data-Injection
-![jetracer_intro_pic_v2](https://github.com/Lorenzo-Lyons/Distributed-Attack-Resilient-Platooning-Against-False-Data-Injection/assets/94372990/f8bf5ae4-f19f-48a5-9722-a58b810fc244)
+<p align="center">
+  <img src="readme_images/Intro_pic.png" alt="jetracer_intro_pic_v2" width="850"/>
+</p>
 
 ## Content
 This repo contains the code and data relative to the paper "Distributed Attack-Resilient Platooning Against False Data Injection" by Lorenzo Lyons, Manuel Boldrer and Laura Ferranti.
@@ -17,3 +19,11 @@ This folder contains the experimental data and the code used to generate the fig
 
 ### ROS_packages
 The package "platooning_utilities" is intended to be run on a laptop and can be used while playing the provided ros .bag files in "2_platooning_experiments_data_processing/experiment_data", while platooning_pkg is intended to run on [DART](https://github.com/Lorenzo-Lyons/DART.git), the platform used to conduct the experiments. 
+
+
+
+<h2 align="center"><strong>Distributed autonomous platoon rearranging</strong></h2>
+
+<p align="center">
+  <img src="readme_images/rearranging.gif" alt="rearranging_gif"/>
+</p>
